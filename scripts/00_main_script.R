@@ -68,7 +68,6 @@ source("03_Pruebas_Camila.R")
 setwd(paste0(wd,"/scripts"))
 source("04_Pruebas_Julian.R")
 
-
 #Script: "05_Pruebas_Alejandra.R". Predicciones de Clasificación directa e indirecta
 setwd(paste0(wd,"/scripts"))
 source("05_Pruebas_Alejandra.R")
