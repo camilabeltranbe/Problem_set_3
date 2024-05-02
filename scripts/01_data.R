@@ -61,21 +61,41 @@ train$rooms <- ifelse(is.na(train$rooms),train$rooms2,train$rooms)
 train$rooms <- ifelse(train$rooms==0,NA,train$rooms) # poner NA cuando da como resultado 0 habitaciones
 
 # georeferencia x localidad ----------------------------------------------------
-# fuente: https://bogota-laburbano.opendatasoft.com/explore/dataset/georeferencia-puntual-por-localidad/table/
-localidades <- st_read("georeferencia-puntual-por-localidad.json")
+# fuente: https://bogota-laburbano.opendatasoft.com/explore/dataset/poligonos-localidades/export/
+localidades <- st_read("poligonos-localidades.geojson")
+localidades <- subset(localidades, !(Nombre.de.la.localidad == "SUMAPAZ")) #quitar Sumapaz
+localidades <- st_transform(localidades,4626)
+sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4626)
+sf_test<- st_as_sf(test, coords = c("lon", "lat"),  crs = 4626)
 
 # imputación de datos ----------------------------------------------------------
 
 # creación, modificación de variables ------------------------------------------
+
 # hay q correr esto cuando imputemos datos de área
 train <- train %>%
-  mutate(precio_por_mt2 = round(price/surface_total, 0))%>%
-  mutate(precio_por_mt2 = precio_por_mt2/1000000 )  # precio x Mt2 en millones
+  mutate(precio_mt2 = round(price/surface_total, 0))%>%
+  mutate(precio_mt2 = precio_mt2/1000000 )  # precio x Mt2 en millones
 
 # quitar outliers
-#Filtramos ese outlier que resulta no ser real
+# filtramos ese outlier que resulta no ser real
 train <- train %>%
-  filter(between(precio_por_mt2, 0.10,  30))
+  filter(between(precio_mt2, 0.10,  30))
+
+# gráficas de ubicación geográfica x localidad ---------------------------------
+# (train)
+ggplot()+
+  geom_sf(data=localidades, color = "darkred") + 
+  geom_sf(data=sf_train,shape=15, size=0.3
+          ,aes(color=precio_mt2)) + 
+  theme_bw()
+
+# (test)
+ggplot()+
+  geom_sf(data=localidades, color = "darkred") + 
+  geom_sf(data=sf_test,shape=15, size=0.3,color="darkblue") +
+  theme_bw()
+
 
 # estadísticas descriptivas ----------------------------------------------------
 stargazer(train,type="text")
