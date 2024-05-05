@@ -78,7 +78,6 @@ test <- test %>%
     between(lon, lim_chapinero[1, "min"], lim_chapinero[1, "max"]) & 
       between(lat, lim_chapinero[2, "min"], lim_chapinero[2, "max"])
   )
-#Visualización de aptos y casas - Normalizando el precio por mt2
 
 # georeferencia x localidad ----------------------------------------------------
 # fuente: https://bogota-laburbano.opendatasoft.com/explore/dataset/poligonos-localidades/export/
