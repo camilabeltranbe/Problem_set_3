@@ -1,6 +1,6 @@
 #####Datos - problem set 3######
 rm(list = ls())
-
+install.packages("pacman")
 require(pacman)
 # Cargar las librerías listadas e instalarlas en caso de ser necesario
 p_load(tidyverse, # Manipular dataframes
@@ -14,6 +14,7 @@ p_load(tidyverse, # Manipular dataframes
        visdat) #gráfica para missings 
 
 #wd <- "C:/Users/camib/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3"
+wd <-("C:/Users/User/OneDrive - Universidad de los andes/Big Data y Machine Learning/Problem_set_3")
 wd <- ("/Users/camilabeltran/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3")
 
 #se define la ruta
@@ -60,6 +61,23 @@ train$rooms2 <- rowSums(train[c("bedrooms","bathrooms")],na.rm=T)
 train$rooms <- ifelse(is.na(train$rooms),train$rooms2,train$rooms)
 train$rooms <- ifelse(train$rooms==0,NA,train$rooms) # poner NA cuando da como resultado 0 habitaciones
 
+#D|elimitando los datos a solamente chapinero (JULIAN SUJETO A REVISION)---------------------
+#Problema que se indetifico: existian datos outliers como aptos y casas en Suba,
+#que no corresponden a predecir chapinero
+lim_chapinero<- getbb("Chapinero, Bogotá, Colombia")
+lim_chapinero
+train <- train %>%
+  filter(
+    between(lon, lim_chapinero[1, "min"], lim_chapinero[1, "max"]) & 
+      between(lat, lim_chapinero[2, "min"], lim_chapinero[2, "max"])
+  )
+test <- test %>%
+  filter(
+    between(lon, lim_chapinero[1, "min"], lim_chapinero[1, "max"]) & 
+      between(lat, lim_chapinero[2, "min"], lim_chapinero[2, "max"])
+  )
+
+
 # georeferencia x localidad ----------------------------------------------------
 # fuente: https://bogota-laburbano.opendatasoft.com/explore/dataset/poligonos-localidades/export/
 localidades <- st_read("poligonos-localidades.geojson")
@@ -87,7 +105,7 @@ train <- train %>%
 ggplot()+
   geom_sf(data=localidades, color = "darkred") + 
   geom_sf(data=sf_train,shape=15, size=0.3
-          ,aes(color=precio_mt2)) + 
+          ,aes(color= precio_mt2)) + 
   theme_bw()
 
 # (test)
