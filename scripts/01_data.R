@@ -79,7 +79,6 @@ test <- test %>%
       between(lat, lim_chapinero[2, "min"], lim_chapinero[2, "max"])
   )
 
-
 # georeferencia x localidad ----------------------------------------------------
 # fuente: https://bogota-laburbano.opendatasoft.com/explore/dataset/poligonos-localidades/export/
 localidades <- st_read("poligonos-localidades.geojson")
@@ -115,6 +114,14 @@ ggplot()+
   geom_sf(data=sf_test,shape=15, size=0.3,color="darkblue") +
   theme_bw()
 
+#gráficas de ubicación geográfica en chapinero x tipo apto o casa---------------
+#CAMBIEN LOS COLORES. SOY TERRIBLE CON LOS COLORES- by JULIAN
+
+ggplot()+
+  geom_sf(data=localidades, color = "red") + 
+  geom_sf(data=sf_train%>% filter(property_type== "Apartamento"),aes(color = "darkblue") ,shape=15, size=0.3)+
+  geom_sf(data=sf_train %>% filter(property_type=="Casa"),aes(color="darkorange"),shape=15, size=0.3)+
+  theme_bw()
 
 # estadísticas descriptivas ----------------------------------------------------
 stargazer(train,type="text")
