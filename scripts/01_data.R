@@ -167,4 +167,4 @@ train$Dist_pol <- st_distance(train_st, police)
 train$Dist_pol <- apply(train$Dist_pol, 1, min)
 
 
-
+## 
