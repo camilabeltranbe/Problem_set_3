@@ -119,3 +119,27 @@ ggplot()+
 # estadísticas descriptivas ----------------------------------------------------
 stargazer(train,type="text")
 stargazer(test,type="text")
+
+
+
+
+
+## Nueva Variable -------
+
+available_features() %>% head(20)
+geocode_OSM("Casa de Nariño, Bogotá")
+geocode_OSM("Casa de Nariño, Bogotá")
+
+require("pacman")
+p_load(tidyverse, sf, tmaptools) 
+
+bogota<-opq(bbox = getbb("Bogotá Colombia"))
+bogota
+
+#Obtenenemos las universidades
+police<- bogota %>% 
+  add_osm_feature(key="amenity",value="police") %>% # de las amenities disponibles, seleccionamos las universidades
+  osmdata_sf() #transformamos a un objeto sf
+
+puntos_police<-police$osm_point
+head(puntos_police)
