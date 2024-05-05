@@ -131,22 +131,40 @@ stargazer(test,type="text")
 
 
 
-## Nueva Variable -------
+#### Nueva Variable -------
+# El siguiente procedimiento busca crear una variable que mida la distancia de 
+# la propiedad y la estación de policia o CAI más cercano. Esto será una proxy 
+# de seguridad. 
 
-available_features() %>% head(20)
-geocode_OSM("Casa de Nariño, Bogotá")
-geocode_OSM("Casa de Nariño, Bogotá")
-
-require("pacman")
+# a. Importar los datos de bogota
 p_load(tidyverse, sf, tmaptools) 
 
 bogota<-opq(bbox = getbb("Bogotá Colombia"))
 bogota
 
-#Obtenenemos las universidades
-police<- bogota %>% 
-  add_osm_feature(key="amenity",value="police") %>% # de las amenities disponibles, seleccionamos las universidades
+# b. Obtenenemos las estaciones de policia
+police <- bogota %>% 
+  add_osm_feature(key="amenity",value="police") %>% #amenities disponibles
   osmdata_sf() #transformamos a un objeto sf
 
+# Centroides de los puntos 
 puntos_police<-police$osm_point
 head(puntos_police)
+
+# Situar los datos en la misma proyeccion
+
+#  Policia
+police <- st_transform(police$osm_points, 4686)
+#  Transformación de Train
+train_st<-st_as_sf(train, coords=c('lon','lat'),crs=4326)
+train_st<-st_transform(train_st,4686)
+st_crs(train_st)
+
+# calculo distancia
+train$Dist_pol <- st_distance(train_st, police)
+
+# La distancia mas cercana 
+train$Dist_pol <- apply(train$Dist_pol, 1, min)
+
+
+
