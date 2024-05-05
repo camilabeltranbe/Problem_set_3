@@ -11,7 +11,9 @@ p_load(tidyverse, # Manipular dataframes
        sf, # Leer/escribir/manipular datos espaciales
        osmdata, # Get OSM's data 
        tidymodels,#para modelos de ML
-       visdat) #gráfica para missings 
+       visdat,
+       ggplot2,
+       stargazer) #gráfica para missings 
 
 #wd <- "C:/Users/camib/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3"
 wd <-("C:/Users/User/OneDrive - Universidad de los andes/Big Data y Machine Learning/Problem_set_3")
@@ -61,7 +63,7 @@ train$rooms2 <- rowSums(train[c("bedrooms","bathrooms")],na.rm=T)
 train$rooms <- ifelse(is.na(train$rooms),train$rooms2,train$rooms)
 train$rooms <- ifelse(train$rooms==0,NA,train$rooms) # poner NA cuando da como resultado 0 habitaciones
 
-#D|elimitando los datos a solamente chapinero (JULIAN SUJETO A REVISION)---------------------
+#Delimitando los datos a solamente chapinero (JULIAN SUJETO A REVISION)---------------------
 #Problema que se indetifico: existian datos outliers como aptos y casas en Suba,
 #que no corresponden a predecir chapinero
 lim_chapinero<- getbb("Chapinero, Bogotá, Colombia")
@@ -104,8 +106,7 @@ train <- train %>%
 # (train)
 ggplot()+
   geom_sf(data=localidades, color = "darkred") + 
-  geom_sf(data=sf_train,shape=15, size=0.3
-          ,aes(color= precio_mt2)) + 
+  geom_sf(data=sf_train,shape=15, size=0.3,aes(color= precio_mt2)) + 
   theme_bw()
 
 # (test)
