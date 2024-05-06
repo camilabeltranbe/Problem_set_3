@@ -63,6 +63,9 @@ train$rooms2 <- rowSums(train[c("bedrooms","bathrooms")],na.rm=T)
 train$rooms <- ifelse(is.na(train$rooms),train$rooms2,train$rooms)
 train$rooms <- ifelse(train$rooms==0,NA,train$rooms) # poner NA cuando da como resultado 0 habitaciones
 
+## Transformacion Log(Precio)
+train$Log_Precio <- log(train$price)
+  
 #Delimitando los datos a solamente chapinero (JULIAN SUJETO A REVISION)---------------------
 #Problema que se indetifico: existian datos outliers como aptos y casas en Suba,
 #que no corresponden a predecir chapinero
@@ -139,7 +142,7 @@ stargazer(train,type="text")
 stargazer(test,type="text")
 
 
-
+#### Transformac
 
 
 #### Nueva Variable -------
