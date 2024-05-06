@@ -116,11 +116,22 @@ ggplot()+
 
 #gráficas de ubicación geográfica en chapinero x tipo apto o casa---------------
 #CAMBIEN LOS COLORES. SOY TERRIBLE CON LOS COLORES- by JULIAN
+ggplot() +
+  geom_sf(data = localidades, color = "darkgrey") + 
+  geom_sf(data = sf_train %>% filter(property_type == "Apartamento"), aes(color = "Apartamento"), shape = 15, size = 0.3) +
+  geom_sf(data = sf_train %>% filter(property_type == "Casa"), aes(color = "Casa"), shape = 15, size = 0.3) +
+  scale_color_manual(name = "Tipo de Propiedad", 
+                     values = c(Apartamento = "red", Casa = "darkblue")) +
+  labs(x = "Longitud", y = "Latitud")+
+    theme_bw()
 
-ggplot()+
-  geom_sf(data=localidades, color = "red") + 
-  geom_sf(data=sf_train%>% filter(property_type== "Apartamento"),aes(color = "darkblue") ,shape=15, size=0.3)+
-  geom_sf(data=sf_train %>% filter(property_type=="Casa"),aes(color="darkorange"),shape=15, size=0.3)+
+ggplot() +
+  geom_sf(data = localidades, color = "darkgrey") + 
+  geom_sf(data = sf_test %>% filter(property_type == "Apartamento"), aes(color = "Apartamento"), shape = 15, size = 0.3) +
+  geom_sf(data = sf_test %>% filter(property_type == "Casa"), aes(color = "Casa"), shape = 15, size = 0.3) +
+  scale_color_manual(name = "Tipo de Propiedad", 
+                     values = c(Apartamento = "red", Casa = "darkblue")) +
+  labs(x = "Longitud", y = "Latitud")+
   theme_bw()
 
 # estadísticas descriptivas ----------------------------------------------------
@@ -167,4 +178,4 @@ train$Dist_pol <- st_distance(train_st, police)
 train$Dist_pol <- apply(train$Dist_pol, 1, min)
 
 
-## 
+
