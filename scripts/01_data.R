@@ -66,18 +66,18 @@ train$rooms <- ifelse(train$rooms==0,NA,train$rooms) # poner NA cuando da como r
 #Delimitando los datos a solamente chapinero (JULIAN SUJETO A REVISION)---------------------
 #Problema que se indetifico: existian datos outliers como aptos y casas en Suba,
 #que no corresponden a predecir chapinero
-lim_chapinero<- getbb("Chapinero, Bogotá, Colombia")
-lim_chapinero
-train <- train %>%
-  filter(
-    between(lon, lim_chapinero[1, "min"], lim_chapinero[1, "max"]) & 
-      between(lat, lim_chapinero[2, "min"], lim_chapinero[2, "max"])
-  )
-test <- test %>%
-  filter(
-    between(lon, lim_chapinero[1, "min"], lim_chapinero[1, "max"]) & 
-      between(lat, lim_chapinero[2, "min"], lim_chapinero[2, "max"])
-  )
+#lim_chapinero<- getbb("Chapinero, Bogotá, Colombia")
+#lim_chapinero
+#train <- train %>%
+#  filter(
+#   between(lon, lim_chapinero[1, "min"], lim_chapinero[1, "max"]) & 
+#     between(lat, lim_chapinero[2, "min"], lim_chapinero[2, "max"])
+# )
+#test <- test %>%
+#  filter(
+#   between(lon, lim_chapinero[1, "min"], lim_chapinero[1, "max"]) & 
+#     between(lat, lim_chapinero[2, "min"], lim_chapinero[2, "max"])
+# )
 
 # georeferencia x localidad ----------------------------------------------------
 # fuente: https://bogota-laburbano.opendatasoft.com/explore/dataset/poligonos-localidades/export/
@@ -177,5 +177,44 @@ train$Dist_pol <- st_distance(train_st, police)
 # La distancia mas cercana 
 train$Dist_pol <- apply(train$Dist_pol, 1, min)
 
+#Adicionando las 4 variables  de OPEN STREET MAPS------------------------------
+# Obtener las etiquetas disponibles para el ocio
+datos_osm <- available_tags("leisure")
+
+# Extraemos la info de todos los parques de chapinero en bogotá
+parques <- opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key = "leisure" , value = "park") 
+# Cambiamos el formato para que sea un objeto sf (simple features)
+parques_sf <- osmdata_sf(parques)
+
+# De las features del parque nos interesa su geomoetría y donde estan ubicados 
+parques_geometria <- parques_sf$osm_polygons %>% 
+  dplyr::select(osm_id, name) 
+# Guardemos los poligonos de los parques 
+parques_geometria <- st_as_sf(parques_sf$osm_polygons)
+# Calculamos el centroide de cada parque para aproximar su ubciacion como un solo punto 
+centroides <- st_centroid(parques_geometria, byid = T)
+centroides <- centroides %>%
+  mutate(x=st_coordinates(centroides)[, "X"]) %>%
+  mutate(y=st_coordinates(centroides)[, "Y"]) 
+
+centroides_sf <- st_as_sf(centroides, coords = c("x", "y"), crs=4326)
+dist_matrix <- st_distance(x = train_st, y = centroides_sf)
+dim(dist_matrix)
+dist_min <- apply(dist_matrix, 1, min)  
 
 
+# La agregamos como variable a nuestra base de datos original 
+db <- db %>% mutate(distancia_parque = dist_min)
+
+
+#Vamos a tomar una muestra dada la cantidad de los datos 
+p <- ggplot(db%>%sample_n(1000), aes(x = distancia_parque, y = price)) +
+  geom_point(col = "darkblue", alpha = 0.4) +
+  labs(x = "Distancia mínima a un parque en metros (log-scale)",  
+       y = "Valor de venta  (log-scale)",
+       title = "Relación entre la proximidad a un parque y el precio del immueble") +
+  scale_x_log10() +
+  scale_y_log10(labels = scales::dollar) +
+  theme_bw()
+ggplotly(p)
