@@ -107,6 +107,12 @@ localidades <- subset(localidades, !(Nombre.de.la.localidad == "SUMAPAZ")) #quit
 localidades <- st_transform(localidades,4626)
 sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4626)
 sf_test<- st_as_sf(test, coords = c("lon", "lat"),  crs = 4626)
+# Realizar la unión espacial basada en la proximidad de coordenadas
+sf_train <- st_join(sf_train, localidades, join = st_intersects)
+sf_test <- st_join(sf_test, localidades, join = st_intersects)
+# Agregar a train y test tambien 
+train$localidad <- sf_train$Nombre.de.la.localidad
+test$localidad <- sf_test$Nombre.de.la.localidad
 
 # gráficas de ubicación geográfica x localidad ---------------------------------
 # (train)
@@ -140,14 +146,6 @@ ggplot() +
                      values = c(Apartamento = "red", Casa = "darkblue")) +
   labs(x = "Longitud", y = "Latitud")+
   theme_bw()
-
-# Realizar la unión espacial basada en la proximidad de coordenadas
-sf_train <- st_join(sf_train, localidades, join = st_intersects)
-sf_test <- st_join(sf_test, localidades, join = st_intersects)
-
-#Agregar a train y test tambien 
-train$localidad <- sf_train$Nombre.de.la.localidad
-test$localidad <- sf_test$Nombre.de.la.localidad
 
 # a. Importar los datos de bogota
 p_load(tidyverse, sf, tmaptools) 
@@ -238,3 +236,19 @@ ggplot(sf_train%>%sample_n(1000), aes(x = area_parque, y = precio_mt2)) +
   theme_bw()
 ggplotly(p)
 
+# Datos abiertos Bogotá --------------------------------------------------------
+barrios <- st_read("SECTOR.GEOJSON")
+barrios <- st_transform(barrios,4626)
+sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4626)
+sf_test<- st_as_sf(test, coords = c("lon", "lat"),  crs = 4626)
+
+# Verificar y corregir geometrías inválidas
+if (!all(st_is_valid(barrios))) {
+  barrios <- st_make_valid(barrios)}
+
+# Realizar la unión espacial basada en la proximidad de coordenadas
+sf_train <- st_join(sf_train, barrios, join = st_intersects)
+sf_test <- st_join(sf_test, barrios, join = st_intersects)
+# Agregar a train y test tambien 
+train$barrio <- sf_train$SCANOMBRE
+test$barrio <- sf_test$SCANOMBRE
