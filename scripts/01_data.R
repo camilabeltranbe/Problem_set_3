@@ -1,6 +1,6 @@
 #####Datos - problem set 3######
 rm(list = ls())
-install.packages("pacman")
+#install.packages("pacman")
 require(pacman)
 # Cargar las librerías listadas e instalarlas en caso de ser necesario
 p_load(tidyverse, # Manipular dataframes
@@ -11,14 +11,15 @@ p_load(tidyverse, # Manipular dataframes
        sf, # Leer/escribir/manipular datos espaciales
        osmdata, # Get OSM's data 
        tidymodels,#para modelos de ML
-       visdat,
+       visdat,#gráfica para missings
        ggplot2,
-       stargazer) #gráfica para missings 
+       stargazer,
+       modeest)  
 
 #wd <- "C:/Users/camib/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3"
-wd <-("C:/Users/User/OneDrive - Universidad de los andes/Big Data y Machine Learning/Problem_set_3")
+#wd <-("C:/Users/User/OneDrive - Universidad de los andes/Big Data y Machine Learning/Problem_set_3")
 wd <- ("/Users/camilabeltran/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3")
-wd <- ("C:/Users/Juan/Documents/Problem_set_3")
+#wd <- ("C:/Users/Juan/Documents/Problem_set_3")
 #se define la ruta
 setwd(paste0(wd,"/stores"))
 
@@ -34,6 +35,41 @@ dim(test) #10286 y 16 variables (var de precio está en NA)
 colnames(train)
 colnames(test)
 
+# missing values ---------------------------------------------------------------
+vis_dat(train)
+vis_dat(test)
+# hay NA en "surface_total", "surface_covered","rooms","bathrooms"
+
+# imputación de datos ----------------------------------------------------------
+# rooms, surface_total y surface_covered
+train <- train %>%
+  group_by(property_type) %>%
+  mutate(rooms2 = ifelse(is.na(rooms), mlv(rooms,na.rm = T), rooms),
+         bathrooms2 = ifelse(is.na(bathrooms), mlv(rooms,na.rm = T), bathrooms), #moda de cuartos
+         surface_total2 = ifelse(is.na(surface_total), mean(surface_total,na.rm = T), surface_total), #media de superficie total
+         surface_covered2 = ifelse(is.na(surface_covered), mean(surface_covered,na.rm = T), surface_covered)) #media de superficie cubierta
+
+test <- test %>%
+  group_by(property_type) %>%
+  mutate(rooms2 = ifelse(is.na(rooms), mlv(rooms,na.rm = T), rooms),
+         bathrooms2 = ifelse(is.na(bathrooms), mlv(rooms,na.rm = T), bathrooms), #moda de cuartos
+         surface_total2 = ifelse(is.na(surface_total), mean(surface_total,na.rm = T), surface_total), #media de superficie total
+         surface_covered2 = ifelse(is.na(surface_covered), mean(surface_covered,na.rm = T), surface_covered)) #media de superficie cubierta
+
+# creación, modificación de variables ------------------------------------------
+## Transformacion Log(Precio)
+train$Log_Precio <- log(train$price)
+
+# precio x metro cuadrado
+train <- train %>%
+  mutate(precio_mt2 = round(price/surface_total2,0))%>%
+  mutate(precio_mt2 = precio_mt2/1000000)  # precio x Mt2 en millones
+summary(train$precio_mt2)
+
+# estadísticas descriptivas ----------------------------------------------------
+stargazer(as.data.frame(train),type="text")
+stargazer(as.data.frame(test),type="text")
+
 # datos geoespaciales ----------------------------------------------------------
 
 # primera visualización de datos (train)
@@ -48,24 +84,6 @@ leaflet() %>%
   addCircles(lng = test$lon, 
              lat = test$lat)
 
-# missing values ---------------------------------------------------------------
-vis_dat(train)
-vis_dat(test)
-# hay NA en "surface_total", "surface_covered","rooms","bathrooms"
-
-# asignar los NA de "rooms" como la suma de baños y habitaciones - test
-test$rooms2 <- rowSums(test[c("bedrooms","bathrooms")],na.rm=T)
-test$rooms <- ifelse(is.na(test$rooms),test$rooms2,test$rooms)
-test$rooms <- ifelse(test$rooms==0,NA,test$rooms) # poner NA cuando da como resultado 0 habitaciones
-
-# asignar los NA de "rooms" como la suma de baños y habitaciones - train
-train$rooms2 <- rowSums(train[c("bedrooms","bathrooms")],na.rm=T)
-train$rooms <- ifelse(is.na(train$rooms),train$rooms2,train$rooms)
-train$rooms <- ifelse(train$rooms==0,NA,train$rooms) # poner NA cuando da como resultado 0 habitaciones
-
-## Transformacion Log(Precio)
-train$Log_Precio <- log(train$price)
-  
 #Delimitando los datos a solamente chapinero (JULIAN SUJETO A REVISION)---------------------
 #Problema que se indetifico: existian datos outliers como aptos y casas en Suba,
 #que no corresponden a predecir chapinero
@@ -89,20 +107,6 @@ localidades <- subset(localidades, !(Nombre.de.la.localidad == "SUMAPAZ")) #quit
 localidades <- st_transform(localidades,4626)
 sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4626)
 sf_test<- st_as_sf(test, coords = c("lon", "lat"),  crs = 4626)
-
-# imputación de datos ----------------------------------------------------------
-
-# creación, modificación de variables ------------------------------------------
-
-# hay q correr esto cuando imputemos datos de área
-train <- train %>%
-  mutate(precio_mt2 = round(price/surface_total, 0))%>%
-  mutate(precio_mt2 = precio_mt2/1000000 )  # precio x Mt2 en millones
-
-# quitar outliers
-# filtramos ese outlier que resulta no ser real
-train <- train %>%
-  filter(between(precio_mt2, 0.10,  30))
 
 # gráficas de ubicación geográfica x localidad ---------------------------------
 # (train)
@@ -137,21 +141,18 @@ ggplot() +
   labs(x = "Longitud", y = "Latitud")+
   theme_bw()
 
-# estadísticas descriptivas ----------------------------------------------------
-stargazer(train,type="text")
-stargazer(test,type="text")
+# Realizar la unión espacial basada en la proximidad de coordenadas
+sf_train <- st_join(sf_train, localidades, join = st_intersects)
+sf_test <- st_join(sf_test, localidades, join = st_intersects)
 
-
-#### Transformac
-
-
-#### Nueva Variable -------
-# El siguiente procedimiento busca crear una variable que mida la distancia de 
-# la propiedad y la estación de policia o CAI más cercano. Esto será una proxy 
-# de seguridad. 
+#Agregar a train y test tambien 
+train$localidad <- sf_train$Nombre.de.la.localidad
+test$localidad <- sf_test$Nombre.de.la.localidad
 
 # a. Importar los datos de bogota
 p_load(tidyverse, sf, tmaptools) 
+
+print(available_features()) # para ver todas las categorias
 
 bogota<-opq(bbox = getbb("Bogotá Colombia"))
 bogota
@@ -205,7 +206,6 @@ centroides_sf <- st_as_sf(centroides, coords = c("x", "y"), crs=4326)
 #modificacion de la codificciòn de sf_train
 sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4326)
 
-
 dist_matrix <- st_distance(x = sf_train, y = centroides_sf)
 dim(dist_matrix)
 dist_min <- apply(dist_matrix, 1, min)  
@@ -237,3 +237,4 @@ ggplot(sf_train%>%sample_n(1000), aes(x = area_parque, y = precio_mt2)) +
   scale_y_log10(labels = scales::dollar) +
   theme_bw()
 ggplotly(p)
+
