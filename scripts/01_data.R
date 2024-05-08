@@ -227,7 +227,6 @@ ggplot(sf_train%>%sample_n(1000), aes(x = area_parque, y = precio_mt2)) +
   scale_x_log10() +
   scale_y_log10(labels = scales::dollar) +
   theme_bw()
-ggplotly(p)
 
 # datos abiertos Bogotá --------------------------------------------------------
 
