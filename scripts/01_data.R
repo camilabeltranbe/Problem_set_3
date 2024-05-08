@@ -210,16 +210,6 @@ sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4326)
 dist_matrix <- st_distance(x = sf_train, y = centroides_sf)
 dim(dist_matrix)
 dist_min <- apply(dist_matrix, 1, min)  
-#Vamos a tomar una muestra dada la cantidad de los datos 
-ggplot(sf_train%>%sample_n(1000), aes(x = distancia_parque, y = price)) +
-  geom_point(col = "darkblue", alpha = 0.4) +
-  labs(x = "Distancia mínima a un parque en metros (log-scale)", 
-       y = "Valor de venta  (log-scale)",
-       title = "Relación entre la proximidad a un parque y el precio del immueble") +
-  scale_x_log10() +
-  scale_y_log10(labels = scales::dollar) +
-  theme_bw()
-
 # Ahora vamos a evaluar si el tamaño del parque más cercano influye
 posicion <- apply(dist_matrix, 1, function(x) which(min(x) == x))
 # De la geometria de los parques extraemos el área
