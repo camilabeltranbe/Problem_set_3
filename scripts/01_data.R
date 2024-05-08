@@ -110,7 +110,7 @@ sf_test<- st_as_sf(test, coords = c("lon", "lat"),  crs = 4626)
 # Realizar la unión espacial basada en la proximidad de coordenadas
 sf_train <- st_join(sf_train, localidades, join = st_intersects)
 sf_test <- st_join(sf_test, localidades, join = st_intersects)
-# Agregar a train y test tambien 
+# Agregar variable a train y test  
 train$localidad <- sf_train$Nombre.de.la.localidad
 test$localidad <- sf_test$Nombre.de.la.localidad
 
@@ -147,6 +147,7 @@ ggplot() +
   labs(x = "Longitud", y = "Latitud")+
   theme_bw()
 
+#variable de estacion de policia -----------------------------------------------
 # a. Importar los datos de bogota
 p_load(tidyverse, sf, tmaptools) 
 
@@ -237,6 +238,8 @@ ggplot(sf_train%>%sample_n(1000), aes(x = area_parque, y = precio_mt2)) +
 ggplotly(p)
 
 # Datos abiertos Bogotá --------------------------------------------------------
+
+#variable de barrio 
 barrios <- st_read("SECTOR.GEOJSON")
 barrios <- st_transform(barrios,4626)
 sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4626)
@@ -249,6 +252,6 @@ if (!all(st_is_valid(barrios))) {
 # Realizar la unión espacial basada en la proximidad de coordenadas
 sf_train <- st_join(sf_train, barrios, join = st_intersects)
 sf_test <- st_join(sf_test, barrios, join = st_intersects)
-# Agregar a train y test tambien 
+# Agregar variable a train y test  
 train$barrio <- sf_train$SCANOMBRE
 test$barrio <- sf_test$SCANOMBRE
