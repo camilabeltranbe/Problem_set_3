@@ -56,6 +56,8 @@ test <- test %>%
          surface_total2 = ifelse(is.na(surface_total), mean(surface_total,na.rm = T), surface_total), #media de superficie total
          surface_covered2 = ifelse(is.na(surface_covered), mean(surface_covered,na.rm = T), surface_covered)) #media de superficie cubierta
 
+train <- as.data.frame(train)
+test <- as.data.frame(test)
 # creación, modificación de variables ------------------------------------------
 ## Transformacion Log(Precio)
 train$Log_Precio <- log(train$price)
@@ -67,8 +69,8 @@ train <- train %>%
 summary(train$precio_mt2)
 
 # estadísticas descriptivas ----------------------------------------------------
-stargazer(as.data.frame(train),type="text")
-stargazer(as.data.frame(test),type="text")
+stargazer(train,type="text")
+stargazer(test,type="text")
 
 # datos geoespaciales ----------------------------------------------------------
 
@@ -84,7 +86,7 @@ leaflet() %>%
   addCircles(lng = test$lon, 
              lat = test$lat)
 
-#Delimitando los datos a solamente chapinero (JULIAN SUJETO A REVISION)---------------------
+# delimitando los datos a solamente chapinero (JULIAN SUJETO A REVISION)---------------------
 #Problema que se indetifico: existian datos outliers como aptos y casas en Suba,
 #que no corresponden a predecir chapinero
 #lim_chapinero<- getbb("Chapinero, Bogotá, Colombia")
@@ -127,14 +129,14 @@ ggplot()+
   geom_sf(data=sf_test,shape=15, size=0.3,color="darkblue") +
   theme_bw()
 
-#gráficas de ubicación geográfica en chapinero x tipo apto o casa---------------
+# gráficas de ubicación geográfica en chapinero x tipo apto o casa---------------
 #CAMBIEN LOS COLORES. SOY TERRIBLE CON LOS COLORES- by JULIAN
 ggplot() +
   geom_sf(data = localidades, color = "darkgrey") + 
   geom_sf(data = sf_train %>% filter(property_type == "Apartamento"), aes(color = "Apartamento"), shape = 15, size = 0.3) +
   geom_sf(data = sf_train %>% filter(property_type == "Casa"), aes(color = "Casa"), shape = 15, size = 0.3) +
   scale_color_manual(name = "Tipo de Propiedad", 
-                     values = c(Apartamento = "red", Casa = "darkblue")) +
+                     values = c(Apartamento = "darkred", Casa = "darkblue")) +
   labs(x = "Longitud", y = "Latitud")+
     theme_bw()
 
@@ -143,13 +145,13 @@ ggplot() +
   geom_sf(data = sf_test %>% filter(property_type == "Apartamento"), aes(color = "Apartamento"), shape = 15, size = 0.3) +
   geom_sf(data = sf_test %>% filter(property_type == "Casa"), aes(color = "Casa"), shape = 15, size = 0.3) +
   scale_color_manual(name = "Tipo de Propiedad", 
-                     values = c(Apartamento = "red", Casa = "darkblue")) +
+                     values = c(Apartamento = "darkred", Casa = "darkblue")) +
   labs(x = "Longitud", y = "Latitud")+
   theme_bw()
 
-#variable de estacion de policia -----------------------------------------------
+# variable de estacion de policia -----------------------------------------------
 # a. Importar los datos de bogota
-p_load(tidyverse, sf, tmaptools) 
+#p_load(tidyverse, sf, tmaptools) juanpa estos paquetes ya estan en el p_load de arriba. att. cami
 
 print(available_features()) # para ver todas las categorias
 
@@ -180,7 +182,7 @@ train$Dist_pol <- st_distance(train_st, police)
 # La distancia mas cercana 
 train$Dist_pol <- apply(train$Dist_pol, 1, min)
 
-#Adicionando las 4 variables  de OPEN STREET MAPS------------------------------
+# adicionando las 4 variables  de OPEN STREET MAPS------------------------------
 # Obtener las etiquetas disponibles para el ocio
 datos_osm <- available_tags("leisure")
 
@@ -237,7 +239,7 @@ ggplot(sf_train%>%sample_n(1000), aes(x = area_parque, y = precio_mt2)) +
   theme_bw()
 ggplotly(p)
 
-# Datos abiertos Bogotá --------------------------------------------------------
+# datos abiertos Bogotá --------------------------------------------------------
 
 #variable de barrio 
 barrios <- st_read("SECTOR.GEOJSON")
@@ -255,3 +257,66 @@ sf_test <- st_join(sf_test, barrios, join = st_intersects)
 # Agregar variable a train y test  
 train$barrio <- sf_train$SCANOMBRE
 test$barrio <- sf_test$SCANOMBRE
+
+# nuevas variables de rooms, surface_total y surface_covered (usando barrio) ----
+train <- train %>%
+  group_by(property_type,barrio) %>%
+  mutate(rooms3 = ifelse(is.na(rooms), mlv(rooms,na.rm = T), rooms),
+         bathrooms3 = ifelse(is.na(bathrooms), mlv(rooms,na.rm = T), bathrooms), #moda de cuartos
+         surface_total3 = ifelse(is.na(surface_total), mean(surface_total,na.rm = T), surface_total), #media de superficie total
+         surface_covered3 = ifelse(is.na(surface_covered), mean(surface_covered,na.rm = T), surface_covered)) #media de superficie cubierta
+
+test <- test %>%
+  group_by(property_type,barrio) %>%
+  mutate(rooms3 = ifelse(is.na(rooms), mlv(rooms,na.rm = T), rooms),
+         bathrooms3 = ifelse(is.na(bathrooms), mlv(rooms,na.rm = T), bathrooms), #moda de cuartos
+         surface_total3 = ifelse(is.na(surface_total), mean(surface_total,na.rm = T), surface_total), #media de superficie total
+         surface_covered3 = ifelse(is.na(surface_covered), mean(surface_covered,na.rm = T), surface_covered)) #media de superficie cubierta
+
+# Quedan unos poquitos NA cuando se agrupa por barrio entonces a ese le pongo el de la imputación inicial que solo agrupaba por tipo de propiedad
+train <- train %>% 
+  mutate(rooms3=ifelse(is.na(rooms3),rooms2,rooms3),
+         bathrooms3=ifelse(is.na(bathrooms3),bathrooms2,bathrooms3),
+         surface_total3=ifelse(is.na(surface_total3),surface_total2,surface_total3),
+         surface_covered3=ifelse(is.na(surface_covered3),surface_covered2,surface_covered3))
+test <- test %>% 
+  mutate(rooms3=ifelse(is.na(rooms3),rooms2,rooms3),
+         bathrooms3=ifelse(is.na(bathrooms3),bathrooms2,bathrooms3),
+         surface_total3=ifelse(is.na(surface_total3),surface_total2,surface_total3),
+         surface_covered3=ifelse(is.na(surface_covered3),surface_covered2,surface_covered3))
+
+train <- as.data.frame(train)
+test <- as.data.frame(test)
+
+# variable de texto (no. pisos)-------------------------------------------------
+train <- train %>%
+  mutate(n_pisos = str_extract(description, "(\\w+|\\d+) pisos"))
+
+test <- test %>%
+  mutate(n_pisos = str_extract(description, "(\\w+|\\d+) pisos"))
+
+numeros_escritos <- c( "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", 
+                       "diez","once","doce","trece","catorce","quince")
+numeros_numericos <- as.character(2:15)
+
+train <- train %>%
+  mutate(n_pisos = str_replace_all(n_pisos, setNames(numeros_numericos,numeros_escritos)))
+
+test <- test %>%
+  mutate(n_pisos = str_replace_all(n_pisos, setNames(numeros_numericos,numeros_escritos)))
+
+train <- train %>%
+  mutate(n_pisos_numerico = as.integer(str_extract(n_pisos, "\\d+")))  %>%
+  mutate(n_pisos_numerico = if_else(is.na(n_pisos_numerico), 1, n_pisos_numerico)) %>%
+  mutate(n_pisos_numerico = if_else(n_pisos_numerico>10, 1, n_pisos_numerico)) ### quedarnos propiedades de hasta 10 pisos. 
+
+test <- test %>%
+  mutate(n_pisos_numerico = as.integer(str_extract(n_pisos, "\\d+")))  %>%
+  mutate(n_pisos_numerico = if_else(is.na(n_pisos_numerico), 1, n_pisos_numerico)) %>%
+  mutate(n_pisos_numerico = if_else(n_pisos_numerico>10, 1, n_pisos_numerico)) ### quedarnos propiedades de hasta 10 pisos. 
+
+# variable de texto (zona T o zona G) ------------------------------------------
+train <- train %>%
+  mutate(dummy_zonatyg = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
+test <- test %>%
+  mutate(dummy_zonatyg = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
