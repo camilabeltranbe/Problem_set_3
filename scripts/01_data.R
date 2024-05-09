@@ -306,6 +306,6 @@ test <- test %>%
 
 # variable de texto (zona T o zona G) ------------------------------------------
 train <- train %>%
-  mutate(dummy_zonatyg = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
+  mutate(zonat_g = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
 test <- test %>%
-  mutate(dummy_zonatyg = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
+  mutate(zonat_g = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
