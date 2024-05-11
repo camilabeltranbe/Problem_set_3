@@ -297,12 +297,12 @@ test <- test %>%
 train <- train %>%
   mutate(n_pisos_numerico = as.integer(str_extract(n_pisos, "\\d+")))  %>%
   mutate(n_pisos_numerico = if_else(is.na(n_pisos_numerico), 1, n_pisos_numerico)) %>%
-  mutate(n_pisos_numerico = if_else(n_pisos_numerico>10, 1, n_pisos_numerico)) ### quedarnos propiedades de hasta 10 pisos. 
+  mutate(n_pisos_numerico = if_else(n_pisos_numerico>15, 1, n_pisos_numerico)) ### quedarnos propiedades de hasta 10 pisos. 
 
 test <- test %>%
   mutate(n_pisos_numerico = as.integer(str_extract(n_pisos, "\\d+")))  %>%
   mutate(n_pisos_numerico = if_else(is.na(n_pisos_numerico), 1, n_pisos_numerico)) %>%
-  mutate(n_pisos_numerico = if_else(n_pisos_numerico>10, 1, n_pisos_numerico)) ### quedarnos propiedades de hasta 10 pisos. 
+  mutate(n_pisos_numerico = if_else(n_pisos_numerico>15, 1, n_pisos_numerico)) ### quedarnos propiedades de hasta 10 pisos. 
 
 # variable de texto (zona T o zona G) ------------------------------------------
 train <- train %>%
