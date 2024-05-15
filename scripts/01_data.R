@@ -19,7 +19,7 @@ p_load(tidyverse, # Manipular dataframes
 #wd <- "C:/Users/camib/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3"
 #wd <-("C:/Users/User/OneDrive - Universidad de los andes/Big Data y Machine Learning/Problem_set_3")
 wd <- ("/Users/camilabeltran/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3")
-#wd <- ("C:/Users/Juan/Documents/Problem_set_3")
+wd <- ("C:/Users/Juan/Documents/Problem_set_3")
 #se define la ruta
 setwd(paste0(wd,"/stores"))
 
@@ -69,8 +69,18 @@ train <- train %>%
 summary(train$precio_mt2)
 
 # estadísticas descriptivas ----------------------------------------------------
-stargazer(train,type="text")
+stargazer(train)
 stargazer(test,type="text")
+
+
+# Histograma ----------------------------------------------------
+hist((train$price/1000000), probability = TRUE, col = 'cadetblue4', border = "white", breaks = 25)
+abline(v = mean((train$price/1000000)), col='red', lwd = 3)
+lines(density((train$price/1000000)), col = 'cadetblue1', lwd = 3)
+
+ggplot(train, aes(x = (price/1000000), fill = rooms)) +
+  geom_histogram(color = '#e9ecef', alpha = 0.6, position = 'identity') +
+  labs(title = 'Histogramas Múltiples', x = 'Precio de Viviendas')
 
 # datos geoespaciales ----------------------------------------------------------
 
