@@ -130,7 +130,7 @@ sum(is.na(test$localidad)) #1 NA
 
 ggplot()+
   geom_sf(data=localidades, color = "darkred") + 
-  geom_sf(data=subset(sf_train,is.na(localidad)),shape=15, size=1,aes(color= precio_mt2)) + 
+  geom_sf(data=subset(sf_train,is.na(Nombre.de.la.localidad)),shape=15, size=1,aes(color= precio_mt2)) + 
   theme_bw()
 
 # los 7 NA de train están en Fontibon 
@@ -138,7 +138,7 @@ train[which(is.na(train$localidad)),"localidad"] <- "FONTIBON"
 
 ggplot()+
   geom_sf(data=localidades, color = "darkred") + 
-  geom_sf(data=subset(sf_test,is.na(localidad)),shape=15, size=1,color="darkblue") + 
+  geom_sf(data=subset(sf_test,is.na(Nombre.de.la.localidad)),shape=15, size=1,color="darkblue") + 
   theme_bw()
 
 # el NA de test está en chapinero
@@ -422,3 +422,4 @@ test <- test %>%
 setwd(paste0(wd,"/stores"))
 rm(list = grep("train|test",ls(),value = T,invert = T)) #elimina todo lo del workspace menos train y test
 save.image("data_final.RData")
+
