@@ -19,7 +19,7 @@ p_load(tidyverse, # Manipular dataframes
 #wd <- "C:/Users/camib/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3"
 #wd <-("C:/Users/User/OneDrive - Universidad de los andes/Big Data y Machine Learning/Problem_set_3")
 wd <- ("/Users/camilabeltran/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3")
-wd <- ("C:/Users/Juan/Documents/Problem_set_3")
+#wd <- ("C:/Users/Juan/Documents/Problem_set_3")
 #se define la ruta
 setwd(paste0(wd,"/stores"))
 
@@ -346,11 +346,10 @@ train <- train %>%
   mutate(estrato = ifelse(is.na(estrato), getmode(estrato), estrato)) #moda de localidad
 
 test <- test %>%
-  group_by(localidad=="CHAPINERO") %>%
-  mutate(estrato = ifelse(is.na(estrato), getmode(estrato), estrato)) #moda de localidad
+  mutate(estrato = ifelse(is.na(estrato), getmode(estrato), estrato)) #moda de test
 
-sum(is.na(train$estrato)) #88 NA
-sum(is.na(test$estrato)) #33 NA
+sum(is.na(train$estrato)) #0 NA
+sum(is.na(test$estrato)) #0 NA
 
 train <- as.data.frame(train)
 test <- as.data.frame(test)
@@ -422,4 +421,3 @@ test <- test %>%
 setwd(paste0(wd,"/stores"))
 rm(list = grep("train|test",ls(),value = T,invert = T)) #elimina todo lo del workspace menos train y test
 save.image("data_final.RData")
-
