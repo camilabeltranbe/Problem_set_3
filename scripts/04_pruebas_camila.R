@@ -117,8 +117,16 @@ pc_vars_train <- zdes_train %>%
   select(-property_id) %>%
   colnames()
 
+#precio normal
 full_formula<- as.formula(
   paste("price ~ property_type + rooms3 + bathrooms3 + surface_total3 +
+          surface_covered3 + n_pisos_numerico + zona_t_g ",
+        paste(pc_vars_train, collapse = "+"), 
+        paste(bow_vars_train, collapse = "+"),  sep = "+"))
+
+#precio con logaritmo
+full_formula1<- as.formula(
+  paste(" Log_Precio ~ property_type + rooms3 + bathrooms3 + surface_total3 +
           surface_covered3 + n_pisos_numerico + zona_t_g ",
         paste(pc_vars_train, collapse = "+"), 
         paste(bow_vars_train, collapse = "+"),  sep = "+"))
@@ -128,7 +136,7 @@ elastic_net_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
   set_engine("glmnet")
 
 grid_values <- grid_regular(penalty(range = c(-1,2)), levels = 50) %>% # penalidad va de 10^-1 a 10^2 
-  expand_grid(mixture = c(0,  0.5,  1))
+  expand_grid(mixture = c(0,0.25,0.5,0.75,1))
 
 rec_full <- recipe(full_formula, data = train_full) %>%
   step_novel(all_nominal_predictors()) %>%   # para las clases no antes vistas en el train. 
@@ -136,8 +144,18 @@ rec_full <- recipe(full_formula, data = train_full) %>%
   step_zv(all_predictors()) %>%   #  elimina predictores con varianza cero (constantes)
   step_normalize(all_predictors())  # normaliza los predictores. 
 
+rec_full1 <- recipe(full_formula1, data = train_full) %>%
+  step_novel(all_nominal_predictors()) %>%   # para las clases no antes vistas en el train. 
+  step_dummy(all_nominal_predictors()) %>%  # crea dummies para las variables categóricas
+  step_zv(all_predictors()) %>%   #  elimina predictores con varianza cero (constantes)
+  step_normalize(all_predictors())  # normaliza los predictores. 
+
 workflow_full <- workflow() %>% 
   add_recipe(rec_full) %>%
+  add_model(elastic_net_spec)
+
+workflow_full1 <- workflow() %>% 
+  add_recipe(rec_full1) %>%
   add_model(elastic_net_spec)
 
 train_sf <- st_as_sf(
@@ -160,19 +178,45 @@ tune_full <- tune_grid(
   metrics = metric_set(mae)  # metrica
 )
 
+set.seed(86936)
+tune_full1 <- tune_grid(
+  workflow_full1,         # El flujo de trabajo que contiene: receta y especificación del modelo
+  resamples = block_folds,  # Folds de validación cruzada espacial
+  grid = grid_values,        # Grilla de valores de penalización
+  metrics = metric_set(mae)  # metrica
+)
+
 best_tune_full <- select_best(tune_full, metric = "mae")
+best_tune_full1 <- select_best(tune_full1, metric = "mae")
 
 # Finalizar el flujo de trabajo 'workflow' con el mejor valor de parametros
 full_final <- finalize_workflow(workflow_full, best_tune_full)
 full_final_fit <- fit(full_final, data = train_full)
 
+full_final1 <- finalize_workflow(workflow_full1, best_tune_full1)
+full_final_fit1 <- fit(full_final1, data = train_full)
+
 augment(full_final_fit, new_data = train_full) %>%
-  mae(truth = price, estimate = .pred)
+  mae(truth = price, estimate = .pred) #predicción en train: mae = 180012424
 
-#predicción en train: mae = 180012424
-
-#predicción en test
+#predicción en test (modelo1)
 predicted <- augment(full_final_fit, new_data = test_full)
 model1_elastic_net_text_regressors <- predicted[,c("property_id",".pred")]
 colnames(model1_elastic_net_text_regressors) <- c("property_id","price")
 write.csv(model1_elastic_net_text_regressors,"model1_elastic_net_text_regressors.csv",row.names = F)
+#puntaje Kaggle: 283469139.92881
+
+#sacar exp 
+pred_train1 <- augment(full_final_fit1, new_data = train_full)
+pred_train1$price1 <- round(exp(pred_train1$.pred),-6)
+mae(data = pred_train1,truth = price,estimate = price1) #mae = 179321902
+
+#predicción en test (modelo2)
+predicted1 <- augment(full_final_fit1, new_data = test_full)
+predicted1$price1 <- round(exp(predicted1$.pred),-6)
+model2_elastic_net_text_regressors_logprice <- predicted1[,c("property_id","price1")]
+colnames(model2_elastic_net_text_regressors_logprice) <- c("property_id","price")
+write.csv(model2_elastic_net_text_regressors_logprice,"model2_elastic_net_text_regressors_logprice.csv",row.names = F)
+#puntaje Kaggle: 317925082.55955
+
+save.image("~/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3/stores/data_model1.RData")
