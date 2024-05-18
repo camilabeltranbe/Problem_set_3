@@ -108,7 +108,7 @@ test_full<-  test %>%
   full_join(des_test, join_by(property_id)) %>%
   full_join(zdes_test, join_by(property_id))
 
-#modelo 1 - Elastic Net - variables importantes, texto como regresores y componentes principales de texto --------------------------
+#modelo 1 y 2 - Elastic Net - variables importantes, texto como regresores y componentes principales de texto --------------------------
 bow_vars_train <- des_train %>%
   select(-property_id) %>%
   colnames()
@@ -131,6 +131,15 @@ full_formula1<- as.formula(
         paste(pc_vars_train, collapse = "+"), 
         paste(bow_vars_train, collapse = "+"),  sep = "+"))
 
+#precio normal con mas variables
+full_formula2<- as.formula(
+  paste("price ~ property_type + rooms3 + bathrooms3 + surface_total3 +
+          surface_covered3 + n_pisos_numerico + zona_t_g + estrato +
+          Dist_pol + dist_parque",
+        paste(pc_vars_train, collapse = "+"), 
+        paste(bow_vars_train, collapse = "+"),  sep = "+"))
+
+
 # elastic net
 elastic_net_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
   set_engine("glmnet")
@@ -150,11 +159,21 @@ rec_full1 <- recipe(full_formula1, data = train_full) %>%
   step_zv(all_predictors()) %>%   #  elimina predictores con varianza cero (constantes)
   step_normalize(all_predictors())  # normaliza los predictores. 
 
+rec_full2 <- recipe(full_formula2, data = train_full) %>%
+  step_novel(all_nominal_predictors()) %>%   # para las clases no antes vistas en el train. 
+  step_dummy(all_nominal_predictors()) %>%  # crea dummies para las variables categóricas
+  step_zv(all_predictors()) %>%   #  elimina predictores con varianza cero (constantes)
+  step_normalize(all_predictors())  # normaliza los predictores. 
+
 workflow_full <- workflow() %>% 
   add_recipe(rec_full) %>%
   add_model(elastic_net_spec)
 
 workflow_full1 <- workflow() %>% 
+  add_recipe(rec_full1) %>%
+  add_model(elastic_net_spec)
+
+workflow_full2 <- workflow() %>% 
   add_recipe(rec_full1) %>%
   add_model(elastic_net_spec)
 
@@ -186,8 +205,17 @@ tune_full1 <- tune_grid(
   metrics = metric_set(mae)  # metrica
 )
 
+set.seed(86936)
+tune_full2 <- tune_grid(
+  workflow_full2,         # El flujo de trabajo que contiene: receta y especificación del modelo
+  resamples = block_folds,  # Folds de validación cruzada espacial
+  grid = grid_values,        # Grilla de valores de penalización
+  metrics = metric_set(mae)  # metrica
+)
+
 best_tune_full <- select_best(tune_full, metric = "mae")
 best_tune_full1 <- select_best(tune_full1, metric = "mae")
+best_tune_full2 <- select_best(tune_full1, metric = "mae")
 
 # Finalizar el flujo de trabajo 'workflow' con el mejor valor de parametros
 full_final <- finalize_workflow(workflow_full, best_tune_full)
@@ -195,6 +223,9 @@ full_final_fit <- fit(full_final, data = train_full)
 
 full_final1 <- finalize_workflow(workflow_full1, best_tune_full1)
 full_final_fit1 <- fit(full_final1, data = train_full)
+
+full_final2 <- finalize_workflow(workflow_full2, best_tune_full2)
+full_final_fit2 <- fit(full_final2, data = train_full)
 
 augment(full_final_fit, new_data = train_full) %>%
   mae(truth = price, estimate = .pred) #predicción en train: mae = 180012424
@@ -219,4 +250,17 @@ colnames(model2_elastic_net_text_regressors_logprice) <- c("property_id","price"
 write.csv(model2_elastic_net_text_regressors_logprice,"model2_elastic_net_text_regressors_logprice.csv",row.names = F)
 #puntaje Kaggle: 317925082.55955
 
-save.image("~/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3/stores/data_model1.RData")
+augment(full_final_fit2, new_data = train_full) %>%
+  mae(truth = price, estimate = .pred) #predicción en train: mae = 654534655
+
+#predicción en test (modelo3)
+predicted2 <- augment(full_final_fit2, new_data = test_full)
+model3_elastic_net_text_regressors <- predicted2[,c("property_id",".pred")]
+colnames(model3_elastic_net_text_regressors) <- c("property_id","price")
+write.csv(model3_elastic_net_text_regressors,"model3_elastic_net_text_regressors.csv",row.names = F)
+#puntaje Kaggle: 873559529,54767
+
+#modelo 4 - regresión lineal ---------------------------------------------------
+model1 <- lm(Log_Precio~surface_total3+surface_covered3+rooms3+
+               bathrooms3+estrato+n_pisos_numerico+zona_t_g,data=train)
+predict(model1,newdata = test)

@@ -249,6 +249,7 @@ sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4326)
 dist_matrix <- st_distance(x = sf_train, y = centroides_sf)
 dim(dist_matrix)
 dist_min <- apply(dist_matrix, 1, min)
+train$dist_parque <- dist_min
 
 # Ahora vamos a evaluar si el tamaño del parque más cercano influye
 posicion <- apply(dist_matrix, 1, function(x) which(min(x) == x))
@@ -273,6 +274,7 @@ sf_test<- st_as_sf(test, coords = c("lon", "lat"),  crs = 4326)
 dist_matrix <- st_distance(x = sf_test, y = centroides_sf)
 dim(dist_matrix)
 dist_min <- apply(dist_matrix, 1, min)
+test$dist_parque <- dist_min
 
 # datos abiertos Bogotá --------------------------------------------------------
 
