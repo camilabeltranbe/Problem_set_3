@@ -90,12 +90,16 @@ lines(density((train$price/1000000)), col = 'cadetblue1', lwd = 3)
 
 media_apto <- mean((train$price[train$property_type == "Apartamento"])/1000000)
 media_casa <- mean((train$price[train$property_type == "Casa"])/1000000)
+mean(train$surface_total[train$property_type == "Apartamento"], na.rm = TRUE)
+mean(train$surface_total[train$property_type == "Casa"], na.rm = TRUE)
+
+(media_casa-media_apto)/media_apto
 
 ggplot(train, aes(x = (price/1000000), fill = property_type)) +
   geom_histogram(color="white", alpha = 0.6, position = 'identity', binwidth = 50) +
   geom_vline(aes(xintercept = media_apto), color = "darkgreen", linetype = "dashed")+
   geom_vline(aes(xintercept = media_casa), color = "darkorange3", linetype = "dashed")+
-  labs(title = 'Histogramas Múltiples', x = 'Precio de Viviendas ($ - Millones)', y ="Frecuencia")+
+  labs(x = 'Precio de Viviendas ($ - Millones)', y ="Frecuencia")+
   scale_fill_manual(values=c("cadetblue4", "darkorange"))+
   guides(fill = guide_legend(title = "Inmueble"))+
   facet_wrap(~property_type)
