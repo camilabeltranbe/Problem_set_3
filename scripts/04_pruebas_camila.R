@@ -1,4 +1,4 @@
-
+options(scipen=999)
 require(pacman)
 p_load(rio, ## read datasets
        tidyverse, # Manipular dataframes
@@ -261,6 +261,12 @@ write.csv(model3_elastic_net_text_regressors,"model3_elastic_net_text_regressors
 #puntaje Kaggle: 873559529,54767
 
 #modelo 4 - regresión lineal ---------------------------------------------------
-model1 <- lm(Log_Precio~surface_total3+surface_covered3+rooms3+
-               bathrooms3+estrato+n_pisos_numerico+zona_t_g,data=train)
-predict(model1,newdata = test)
+model1 <- lm(price~surface_total3+surface_covered3+rooms3+
+               bathrooms3+estrato+n_pisos_numerico+zona_t_g+Dist_pol+
+               dist_parque+lat+lon+localidad,data=train)
+train$y_pred <- predict(model1,newdata = train)
+test$y_pred <- predict(model1,newdata = test)
+mae(data = train,truth = price, estimate = y_pred) #predicción en train: mae = 164128735
+model4_linear_regression <- test[,c("property_id","y_pred")]
+colnames(model4_linear_regression) <- c("property_id","price")
+write.csv(model4_linear_regression,"model4_linear_regression.csv",row.names = F)
