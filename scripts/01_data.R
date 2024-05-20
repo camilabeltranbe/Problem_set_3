@@ -19,7 +19,7 @@ p_load(tidyverse, # Manipular dataframes
 #wd <- "C:/Users/camib/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3"
 #wd <-("C:/Users/User/OneDrive - Universidad de los andes/Big Data y Machine Learning/Problem_set_3")
 wd <- ("/Users/camilabeltran/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3")
-wd <- ("C:/Users/Juan/Documents/Problem_set_3")
+#wd <- ("C:/Users/Juan/Documents/Problem_set_3")
 #se define la ruta
 setwd(paste0(wd,"/stores"))
 
@@ -125,6 +125,24 @@ sf_test <- st_join(sf_test, localidades, join = st_intersects)
 # Agregar variable a train y test  
 train$localidad <- sf_train$Nombre.de.la.localidad
 test$localidad <- sf_test$Nombre.de.la.localidad
+sum(is.na(train$localidad)) #7 NA
+sum(is.na(test$localidad)) #1 NA
+
+ggplot()+
+  geom_sf(data=localidades, color = "darkred") + 
+  geom_sf(data=subset(sf_train,is.na(Nombre.de.la.localidad)),shape=15, size=1,aes(color= precio_mt2)) + 
+  theme_bw()
+
+# los 7 NA de train están en Fontibon 
+train[which(is.na(train$localidad)),"localidad"] <- "FONTIBON"
+
+ggplot()+
+  geom_sf(data=localidades, color = "darkred") + 
+  geom_sf(data=subset(sf_test,is.na(Nombre.de.la.localidad)),shape=15, size=1,color="darkblue") + 
+  theme_bw()
+
+# el NA de test está en chapinero
+test[which(is.na(test$localidad)),"localidad"] <- "CHAPINERO"
 
 # gráficas de ubicación geográfica x localidad ---------------------------------
 # (train)
@@ -192,6 +210,17 @@ train$Dist_pol <- st_distance(train_st, police)
 # La distancia mas cercana 
 train$Dist_pol <- apply(train$Dist_pol, 1, min)
 
+#  Transformación de test
+test_st<-st_as_sf(test, coords=c('lon','lat'),crs=4326)
+test_st<-st_transform(test_st,4686)
+st_crs(test_st)
+
+# calculo distancia
+test$Dist_pol <- st_distance(test_st, police)
+
+# La distancia mas cercana 
+test$Dist_pol <- apply(test$Dist_pol, 1, min)
+
 # adicionando las 4 variables  de OPEN STREET MAPS------------------------------
 # Obtener las etiquetas disponibles para el ocio
 datos_osm <- available_tags("leisure")
@@ -219,7 +248,9 @@ sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4326)
 
 dist_matrix <- st_distance(x = sf_train, y = centroides_sf)
 dim(dist_matrix)
-dist_min <- apply(dist_matrix, 1, min)  
+dist_min <- apply(dist_matrix, 1, min)
+train$dist_parque <- dist_min
+
 # Ahora vamos a evaluar si el tamaño del parque más cercano influye
 posicion <- apply(dist_matrix, 1, function(x) which(min(x) == x))
 # De la geometria de los parques extraemos el área
@@ -237,6 +268,13 @@ ggplot(sf_train%>%sample_n(1000), aes(x = area_parque, y = precio_mt2)) +
   scale_x_log10() +
   scale_y_log10(labels = scales::dollar) +
   theme_bw()
+
+#modificacion de la codificciòn de sf_test
+sf_test<- st_as_sf(test, coords = c("lon", "lat"),  crs = 4326)
+dist_matrix <- st_distance(x = sf_test, y = centroides_sf)
+dim(dist_matrix)
+dist_min <- apply(dist_matrix, 1, min)
+test$dist_parque <- dist_min
 
 # datos abiertos Bogotá --------------------------------------------------------
 
@@ -256,6 +294,67 @@ sf_test <- st_join(sf_test, barrios, join = st_intersects)
 # Agregar variable a train y test  
 train$barrio <- sf_train$SCANOMBRE
 test$barrio <- sf_test$SCANOMBRE
+sum(is.na(train$barrio)) #1 NA
+sum(is.na(test$barrio)) #0 NA
+
+train <- train %>%
+  group_by(localidad) %>%
+  mutate(barrio = ifelse(is.na(barrio), mlv(barrio,na.rm = T), barrio)) #moda de localidad
+
+train <- as.data.frame(train)
+
+#variable de estrato
+estratos <- st_read("manzanaestratificacion.json")
+estratos <- st_transform(estratos,4626)
+sf_train<- st_as_sf(train, coords = c("lon", "lat"),  crs = 4626)
+sf_test<- st_as_sf(test, coords = c("lon", "lat"),  crs = 4626)
+
+# Verificar y corregir geometrías inválidas
+if (!all(st_is_valid(estratos))) {
+  estratos <- st_make_valid(estratos)}
+
+# Realizar la unión espacial basada en la proximidad de coordenadas
+sf_train <- st_join(sf_train, estratos, join = st_intersects)
+sf_test <- st_join(sf_test, estratos, join = st_intersects)
+# Agregar variable a train y test  
+train$estrato <- sf_train$ESTRATO
+test$estrato <- sf_test$ESTRATO
+
+#eliminar NA de estrato con moda x barrio
+sum(is.na(train$estrato)) #13.164 NA
+sum(is.na(test$estrato)) #3.172 NA
+
+train <- train %>%
+  group_by(barrio) %>%
+  mutate(estrato = ifelse(is.na(estrato), mlv(estrato,na.rm = T), estrato)) #moda de barrio
+
+test <- test %>%
+  group_by(barrio) %>%
+  mutate(estrato = ifelse(is.na(estrato), mlv(estrato,na.rm = T), estrato)) #moda de barrio
+
+sum(is.na(train$estrato)) #88 NA
+sum(is.na(test$estrato)) #33 NA
+
+train <- as.data.frame(train)
+test <- as.data.frame(test)
+
+#crear función de moda q no genere errores
+getmode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]}
+
+train <- train %>%
+  group_by(localidad) %>%
+  mutate(estrato = ifelse(is.na(estrato), getmode(estrato), estrato)) #moda de localidad
+
+test <- test %>%
+  mutate(estrato = ifelse(is.na(estrato), getmode(estrato), estrato)) #moda de test
+
+sum(is.na(train$estrato)) #0 NA
+sum(is.na(test$estrato)) #0 NA
+
+train <- as.data.frame(train)
+test <- as.data.frame(test)
 
 # nuevas variables de rooms, surface_total y surface_covered (usando barrio) ----
 train <- train %>%
@@ -316,6 +415,11 @@ test <- test %>%
 
 # variable de texto (zona T o zona G) ------------------------------------------
 train <- train %>%
-  mutate(zonat_g = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
+  mutate(zona_t_g = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
 test <- test %>%
-  mutate(zonat_g = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
+  mutate(zona_t_g = if_else(grepl("\\b(zona t|zona g)\\b", description, ignore.case = TRUE), 1, 0))
+
+# guardar resultados en .RData -------------------------------------------------
+setwd(paste0(wd,"/stores"))
+rm(list = grep("train|test",ls(),value = T,invert = T)) #elimina todo lo del workspace menos train y test
+save.image("data_final.RData")
