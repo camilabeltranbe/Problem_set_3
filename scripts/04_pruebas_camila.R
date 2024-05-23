@@ -272,3 +272,149 @@ mae(data = train,truth = price, estimate = y_pred) #predicción en train: mae = 
 model4_linear_regression <- test[,c("property_id","y_pred")]
 colnames(model4_linear_regression) <- c("property_id","price")
 write.csv(model4_linear_regression,"model4_linear_regression.csv",row.names = F)
+
+
+
+# Solo prové el mismo modelo con distintas variables - Yo lo elimino de este script
+# JP - Eliminar 1 ------
+{
+#full_formula_jp1<- as.formula(" Log_Precio ~ property_type + rooms3 + bathrooms3 + 
+#          surface_covered3 + n_pisos_numerico + localidad + Dist_pol + dist_parque + estrato + zona_t_g + abiert + ascensor + bbq + parqueader + gimnasi + deposit + chimene + comunal")
+full_formula_jp1<- as.formula(
+  paste("Log_Precio ~ property_type + rooms3 + bathrooms3 + 
+            surface_covered3 + n_pisos_numerico + localidad + Dist_pol + dist_parque + estrato + zona_t_g + abiert + ascensor + bbq + parqueader + gimnasi + deposit + chimene + comunal",
+        paste(pc_vars_train, collapse = "+"),  sep = "+"))
+
+# ,
+# paste(pc_vars_train, collapse = "+"), 
+# paste(bow_vars_train, collapse = "+"),  sep = "+"))
+
+# elastic net
+elastic_net_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
+  set_engine("glmnet")
+
+grid_values <- grid_regular(penalty(range = c(-1,2)), levels = 50) %>% # penalidad va de 10^-1 a 10^2 
+  expand_grid(mixture = c(0,0.25,0.5,0.75,1))
+
+rec_full_jp1 <- recipe(full_formula_jp1, data = train_full) %>%
+  step_novel(all_nominal_predictors()) %>%   # para las clases no antes vistas en el train. 
+  step_dummy(all_nominal_predictors()) %>%  # crea dummies para las variables categóricas
+  step_zv(all_predictors()) %>%   #  elimina predictores con varianza cero (constantes)
+  step_normalize(all_predictors())  # normaliza los predictores. 
+
+workflow_full_jp1 <- workflow() %>% 
+  add_recipe(rec_full_jp1) %>%
+  add_model(elastic_net_spec)
+
+train_sf <- st_as_sf(
+  train_full, 
+  # "coords" is in x/y order -- so longitude goes first!
+  coords = c("lon", "lat"),
+  # Set our coordinate reference system to EPSG:4326,
+  # the standard WGS84 geodetic coordinate reference system
+  crs = 4326)
+
+set.seed(86936)
+block_folds <- spatial_block_cv(train_sf, v = 5)
+autoplot(block_folds)
+
+set.seed(86936)
+tune_full_jp1 <- tune_grid(
+  workflow_full_jp1,         # El flujo de trabajo que contiene: receta y especificación del modelo
+  resamples = block_folds,  # Folds de validación cruzada espacial
+  grid = grid_values,        # Grilla de valores de penalización
+  metrics = metric_set(mae)  # metrica
+)
+
+best_tune_full_jp1 <- select_best(tune_full_jp1, metric = "mae")
+
+full_final_jp1 <- finalize_workflow(workflow_full_jp1, best_tune_full_jp1)
+full_final_fit_jp1 <- fit(full_final_jp1, data = train_full)
+
+augment(full_final_fit_jp1, new_data = train_full) %>%
+  mae(truth = price, estimate = .pred) #predicción en train: mae = 180012424
+
+#sacar exp 
+pred_train_jp1 <- augment(full_final_fit_jp1, new_data = train_full)
+pred_train_jp1$price1 <- round(exp(pred_train_jp1$.pred),-6)
+mae(data = pred_train_jp1,truth = price,estimate = price1) #mae = 179321902
+
+#predicción en test (modelo2)
+predicted_jp1 <- augment(full_final_fit_jp1, new_data = test_full)
+predicted_jp1$price1 <- round(exp(predicted_jp1$.pred),-6)
+modeljp1_elastic_net_text_regressors_logprice <- predicted_jp1[,c("property_id","price1")]
+colnames(modeljp1_elastic_net_text_regressors_logprice) <- c("property_id","price")
+write.csv(modeljp1_elastic_net_text_regressors_logprice,"modeljp2_elastic_net_logprice.csv",row.names = F)
+}
+
+# JP - Eliminar 2 ------
+{
+  full_formula_jp2<- as.formula(
+    paste("Log_Precio ~ property_type + rooms3 + bathrooms3 + 
+            surface_covered3 + n_pisos_numerico + localidad + Dist_pol + dist_parque + estrato + zona_t_g + abiert + ascensor + bbq + parqueader + gimnasi + deposit + chimene + comunal",
+          paste(pc_vars_train, collapse = "+"),  sep = "+"))
+    
+  # elastic net
+  elastic_net_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
+    set_engine("glmnet")
+  
+  grid_values <- grid_regular(penalty(range = c(-1,2)), levels = 50) %>% # penalidad va de 10^-1 a 10^2 
+    expand_grid(mixture = c(0,0.25,0.5,0.75,1))
+  
+  rec_full_jp2 <- recipe(full_formula_jp2, data = train_full) %>%
+    step_novel(all_nominal_predictors()) %>%   # para las clases no antes vistas en el train. 
+    step_dummy(all_nominal_predictors()) %>%  # crea dummies para las variables categóricas
+    step_zv(all_predictors()) %>%   #  elimina predictores con varianza cero (constantes)
+    step_normalize(all_predictors())  # normaliza los predictores. 
+  
+  workflow_full_jp2 <- workflow() %>% 
+    add_recipe(rec_full_jp2) %>%
+    add_model(elastic_net_spec)
+  
+  train_sf <- st_as_sf(
+    train_full, 
+    # "coords" is in x/y order -- so longitude goes first!
+    coords = c("lon", "lat"),
+    # Set our coordinate reference system to EPSG:4326,
+    # the standard WGS84 geodetic coordinate reference system
+    crs = 4326)
+  
+  set.seed(86936)
+  block_folds <- spatial_block_cv(train_sf, v = 5)
+  autoplot(block_folds)
+  
+  set.seed(86936)
+  tune_full_jp2 <- tune_grid(
+    workflow_full_jp2,         # El flujo de trabajo que contiene: receta y especificación del modelo
+    resamples = block_folds,  # Folds de validación cruzada espacial
+    grid = grid_values,        # Grilla de valores de penalización
+    metrics = metric_set(mae)  # metrica
+  )
+  
+  best_tune_full_jp2 <- select_best(tune_full_jp2, metric = "mae")
+  
+  full_final_jp2 <- finalize_workflow(workflow_full_jp2, best_tune_full_jp2)
+  full_final_fit_jp2 <- fit(full_final_jp2, data = train_full)
+  
+  augment(full_final_fit_jp2, new_data = train_full) %>%
+    mae(truth = price, estimate = .pred) #predicción en train: mae = 180012424
+  
+  #sacar exp 
+  pred_train_jp2 <- augment(full_final_fit_jp2, new_data = train_full)
+  pred_train_jp2$price1 <- round(exp(pred_train_jp2$.pred),-6)
+  mae(data = pred_train_jp2,truth = price,estimate = price1) #mae = 179321902
+  
+  #predicción en test (modelo2)
+  predicted_jp2 <- augment(full_final_fit_jp2, new_data = test_full)
+  predicted_jp1$price1 <- round(exp(predicted_jp2$.pred),-6)
+  modeljp2_elastic_net_text_regressors_logprice <- predicted_jp2[,c("property_id","price1")]
+  colnames(modeljp2_elastic_net_text_regressors_logprice) <- c("property_id","price")
+  write.csv(modeljp2_elastic_net_text_regressors_logprice,"modeljp2_elastic_net_logprice.csv",row.names = F)
+}
+
+#### Mi manera ------------------------
+model_form <- Ln_Ing_hog ~ PerXCuarto + 
+  nocupados +
+  as.factor(Head_Mujer)+
+  Head_Cot_pension+
+  Head_Rec_subsidio
