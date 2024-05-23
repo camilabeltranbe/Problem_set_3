@@ -183,7 +183,6 @@ ggplot() +
 
 # variable de estacion de policia -----------------------------------------------
 # a. Importar los datos de bogota
-#p_load(tidyverse, sf, tmaptools) juanpa estos paquetes ya estan en el p_load de arriba. att. cami
 
 print(available_features()) # para ver todas las categorias
 
@@ -202,18 +201,24 @@ head(puntos_police)
 # Situar los datos en la misma proyeccion
 
 #  Policia
-police <- st_transform(police$osm_points, 4686)
+police <- st_transform(police$osm_points, 4326)
 #  Transformación de Train
 train_st<-st_as_sf(train, coords=c('lon','lat'),crs=4326)
-train_st<-st_transform(train_st,4686)
+train_st<-st_transform(train_st,4326)
 st_crs(train_st)
 
+test_st<-st_as_sf(test, coords=c('lon','lat'),crs=4326)
+test_st<-st_transform(test_st,4326)
+st_crs(test_st)
+
 # calculo distancia
+test$Dist_pol <- st_distance(test_st, police)
 train$Dist_pol <- st_distance(train_st, police)
+
 
 # La distancia mas cercana 
 train$Dist_pol <- apply(train$Dist_pol, 1, min)
-
+test$Dist_pol <- apply(test$Dist_pol, 1, min)
 # adicionando las 4 variables  de OPEN STREET MAPS------------------------------
 # Obtener las etiquetas disponibles para el ocio
 datos_osm <- available_tags("leisure")
