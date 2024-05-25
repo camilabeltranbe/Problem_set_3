@@ -208,8 +208,8 @@ mae<- augment(nnet_tuned_final_fit, new_data = train_full) %>%
   mae(truth = price, estimate = .pred) 
 mae[1,3]
 
-#predicción en test (modelo1)
-predicted <- augment(full_final_fit, new_data = test_full)
-model1_elastic_net_text_regressors <- predicted[,c("property_id",".pred")]
-colnames(model1_elastic_net_text_regressors) <- c("property_id","price")
-write.csv(model1_elastic_net_text_regressors,"model1_elastic_net_text_regressors.csv",row.names = F)
+#predicted <- augment(base_final_fit, new_data = test_full)
+predicted1 <- augment(nnet_tuned_final_fit,new_data = test_full)
+NN_model2 <- predicted1[,c("property_id",".pred")]
+colnames(NN_model2) <- c("property_id","price")
+write.csv(NN_model2,"NN_model1.csv",row.names = F)
