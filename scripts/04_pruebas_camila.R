@@ -7,7 +7,11 @@ p_load(rio, ## read datasets
        stopwords,  # consultar stopwords
        tidymodels,
        sf,
-       spatialsample)
+       spatialsample,
+       xgboost, #xgboosting
+       adabag, #adaboosting  
+       dummy #para crear dummys
+       )
 
 wd <- ("/Users/camilabeltran/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3")
 wd <- ("C:/Users/Juan/Documents/Problem_set_3")
@@ -273,7 +277,15 @@ model4_linear_regression <- test[,c("property_id","y_pred")]
 colnames(model4_linear_regression) <- c("property_id","price")
 write.csv(model4_linear_regression,"model4_linear_regression.csv",row.names = F)
 
-
+model4 <- lm(price~surface_covered3+rooms3+
+               bathrooms3+estrato+n_pisos_numerico+zona_t_g+Dist_pol+
+               dist_parque+lat+lon+localidad,data=train)
+train$y_pred <- predict(model4,newdata = train)
+test$y_pred <- predict(model4,newdata = test)
+mae(data = train,truth = price, estimate = y_pred) #predicción en train: mae = 186363914
+model5_linear_regression <- test[,c("property_id","y_pred")]
+colnames(model5_linear_regression) <- c("property_id","price")
+write.csv(model5_linear_regression,"model4_linear_regression.csv",row.names = F)
 
 # Solo prové el mismo modelo con distintas variables - Yo lo elimino de este script
 # JP - Eliminar 1 ------
@@ -418,3 +430,114 @@ model_form <- Ln_Ing_hog ~ PerXCuarto +
   as.factor(Head_Mujer)+
   Head_Cot_pension+
   Head_Rec_subsidio
+#Boosting ----------------------------------------------------------------------
+
+# predictores sin stopwords y componentes principales
+train1 <- train %>% 
+  select(property_id,price,surface_total3,property_type,lat,lon,
+         rooms3,bathrooms3,estrato,n_pisos_numerico,zona_t_g,localidad,
+         Dist_pol,dist_parque)
+test1 <- test %>% 
+  select(property_id,surface_total3,property_type,lat,lon,
+         rooms3,bathrooms3,estrato,n_pisos_numerico,zona_t_g,localidad,
+         Dist_pol,dist_parque)
+
+#crear dummys train
+dummys <- dummy(subset(train1, select = c(property_type, localidad)))
+dummys <- as.data.frame(apply(dummys,2,function(x){as.numeric(x)}))
+train1 <- cbind(subset(train1, select = -c(property_type, localidad)),dummys)
+#crear dummys test
+dummys <- dummy(subset(test1, select = c(property_type, localidad)))
+dummys <- as.data.frame(apply(dummys,2,function(x){as.numeric(x)}))
+test1 <- cbind(subset(test1, select = -c(property_type, localidad)),dummys)
+#dejar variables que comparten test y train depsues de crear dummys
+train1 <- train1[c(colnames(test1),"price")]
+
+#componentes principales
+pc_train <- train1 %>% 
+  select(-property_id,-price)
+pc_test <- test1 %>% 
+  select(-property_id)
+pc_train <- prcomp(as.matrix(pc_train), scale=TRUE)
+pc_test <- prcomp(as.matrix(pc_test), scale=TRUE)
+
+#guardar componentes 
+pc_train <- as.data.frame(predict(pc_train)) %>%
+  mutate(property_id = train1$property_id)
+pc_test <- as.data.frame(predict(pc_test)) %>%
+  mutate(property_id = test1$property_id)
+
+#unir base de datos 
+train2 <- merge(train1,pc_train,by = "property_id")
+test2 <- merge(test1,pc_test,by = "property_id")
+#base con solo 10 componentes
+train3 <- cbind(train1$price,pc_train)[c(1:11,ncol(pc_train)+1)]
+colnames(train3)[1] <- "price"
+test3 <- pc_test[,c(1:10,ncol(pc_test))]
+
+fitControl <- trainControl(method ="cv",number=5)
+grid_xbgoost <- expand.grid(nrounds = c(500),
+                            max_depth = c(4), 
+                            eta = c(0.25,0.5), 
+                            gamma = c(0), 
+                            min_child_weight = c(50),
+                            colsample_bytree = c(0.33,0.66),
+                            subsample = c(0.4))
+
+#xgboost con variables y componentes principales
+set.seed(6392)
+model1 <- train(price~.,
+                data=train2[-1], #excluye variable de property_id
+                method = "xgbTree", 
+                trControl = fitControl,
+                tuneGrid=grid_xbgoost)        
+model1
+
+train2 <- train2 %>% 
+  mutate(price_pred = predict(model1, newdata = train2))  
+mae(truth = price, estimate = price_pred, data = train2) #predicción en train: mae = 112882917
+
+xgboost1 <- test2 %>% 
+  mutate(price = predict(model1, newdata = test2)) %>% 
+  select(property_id,price) 
+
+write.csv(xgboost1,"xgboost1.csv",row.names = F) #Puntaje Kaggle: 289553937
+
+#xgboost con variables
+set.seed(6392)
+model2 <- train(price~.,
+                data=train1[-1], #excluye variable de property_id
+                method = "xgbTree", 
+                trControl = fitControl,
+                tuneGrid=grid_xbgoost)        
+model2
+
+train1 <- train1 %>% 
+  mutate(price_pred = predict(model2, newdata = train1))  
+mae(truth = price, estimate = price_pred, data = train1) #predicción en train: mae = 124417720
+
+xgboost2 <- test1 %>% 
+  mutate(price = predict(model1, newdata = test1)) %>% 
+  select(property_id,price) 
+
+write.csv(xgboost2,"xgboost2.csv",row.names = F)
+
+#xgboost con 10 componentes principales
+set.seed(6392)
+model3 <- train(price~.,
+                data=train3[-ncol(train3)], #excluye variable de property_id
+                method = "xgbTree", 
+                trControl = fitControl,
+                tuneGrid=grid_xbgoost)        
+model3
+
+train3 <- train3 %>% 
+  mutate(price_pred = predict(model3, newdata = train3))  
+mae(truth = price, estimate = price_pred, data = train3) #predicción en train: mae = 131904294
+
+xgboost3 <- test3 %>% 
+  mutate(price = predict(model3, newdata = test3)) %>% 
+  select(property_id,price) 
+
+write.csv(xgboost3,"xgboost3.csv",row.names = F) 
+
