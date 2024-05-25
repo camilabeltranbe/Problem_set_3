@@ -30,7 +30,7 @@ wd <- ("/Users/aleja/Documents/Maestría Uniandes/Clases/Big Data y Machine Lea
 setwd(paste0(wd,"/stores"))
 load("data_final.RData")
 
-#- 2 | Modelo 1: Random forest con variables relevantes ---------------------
+#- 2 | Arreglo data, regresores de texto, PCA ---------------------
 
 ## guardar las descripciones en un vector source
 descriptions_train <- train$description
@@ -126,7 +126,7 @@ test_full<-  test %>%
   full_join(des_test, join_by(property_id)) %>%
   full_join(zdes_test, join_by(property_id))
 
-#modelo 1 y 2 - Elastic Net - variables importantes, texto como regresores y componentes principales de texto --------------------------
+#-3 | Random Forest: Modelos 1, 2 y 3 - variables importantes, texto como regresores y componentes principales de texto --------------------------
 bow_vars_train <- des_train %>%
   dplyr::select(-property_id) %>%
   colnames()
@@ -159,33 +159,7 @@ full_formula2<- as.formula(
         paste(bow_vars_train, collapse = "+"),  sep = "+"))
 
 
-# Random Forest
-RF<- ranger(Pobre~Dominio + Depto + N_cuartos_hog + Nper + nmenores_5 + nmenores_6_11 + 
-              nmenores_12_17 + nocupados + nincapacitados + ntrabajo_menores + Head_Mujer + Head_Afiliado_SS + 
-              Head_exper_ult_trab + Head_Rec_alimento + Head_Rec_subsidio + Head_Rec_vivienda + Head_Ocupacion + 
-              Head_Segundo_trabajo + DormitorXpersona + Ln_Cuota + Ln_Pago_arrien + nmujeres + Ocup_vivienda + 
-              Head_Cot_pension, 
-            data = train_hogares1,
-            num.trees= 500, ## Numero de bootstrap samples y arboles a estimar. Default 500  
-            mtry= 4,   # N. var aleatoriamente seleccionadas en cada partición. Baggin usa todas las vars.
-            min.node.size  = 1, ## Numero minimo de observaciones en un nodo para intentar 
-            importance="impurity") 
-RF
-
-elastic_net_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
-  set_engine("glmnet")
-install.packages("tidymodels")
-# Actualizar rlang a la versión más reciente
-install.packages("rlang")
-install.packages("yardstick")
-
-# Cargar las librerías necesarias
-library(tidymodels)
-library(tidyverse)
-library(sf)
-library(parsnip)
-library(spatialsample)
-library(yardstick) # Asegurarse de cargar yardstick para las métricas
+## Random Forest
 
 # Especificación del Modelo de Random Forest con el modo establecido
 rf_spec <- rand_forest(mtry = tune(), trees = 1000, min_n = tune()) %>%
@@ -275,6 +249,7 @@ full_final_fit1 <- fit(full_final1, data = train_full)
 full_final2 <- finalize_workflow(workflow_full2, best_tune_full2)
 full_final_fit2 <- fit(full_final2, data = train_full)
 
+#Modelo 1
 augment(full_final_fit, new_data = train_full) %>%
   mae(truth = price, estimate = .pred) #mae = 52343581
 
@@ -296,13 +271,18 @@ predicted1$price1 <- round(exp(predicted1$.pred), -6)
 model2_rf_predictions_logprice <- predicted1[,c("property_id","price1")]
 colnames(model2_rf_predictions_logprice) <- c("property_id","price")
 write.csv(model2_rf_predictions_logprice, "model2_rf_predictions_logprice_ale.csv", row.names = F)
+#Kaggle = 302944224.41176
 
 # Predicción y evaluación del modelo 3 en el conjunto de entrenamiento
 augment(full_final_fit2, new_data = train_full) %>%
-  mae(truth = price, estimate = .pred) # mae = 654534655
+  mae(truth = price, estimate = .pred) # mae = 48923390
 
 # Predicción en el conjunto de prueba (modelo 3)
 predicted2 <- augment(full_final_fit2, new_data = test_full)
 model3_rf_predictions <- predicted2[,c("property_id",".pred")]
 colnames(model3_rf_predictions) <- c("property_id","price")
 write.csv(model3_rf_predictions, "model3_rf_predictions_ale.csv", row.names = F)
+#Kaggle = 264966609.86125
+
+#- 4 | Boosting: Modelo ---------------------------------------------
+
