@@ -14,6 +14,8 @@ p_load("tidyverse",
        "tidymodels",
        "sf",
        "spatialsample",
+       "blockCV",
+       "terra",
        "dummy",
        "rpart", # Recursive Partition and Regression Trees (To run Trees)
        "rpart.plot", ## for trees graphs
@@ -702,6 +704,16 @@ ggplot(cv_results, aes(x = Resample, y = MAE)) +
   xlab("Fold de Validación") +
   ylab("MAE") +
   theme_minimal()
+
+
+# Convertir los datos a un objeto sf (simple features)
+train_sf <- st_as_sf(train_full_dummys, coords = c("lon", "lat"), crs = 4326)
+
+set.seed(86936)
+block_folds <- spatial_block_cv(train_sf, v = 5)
+autoplot(block_folds)
+
+
 
 #- 5 | Modelos de regresión lineal ---------------------------------------------------
 reg_lin_model1 <- lm(price ~ rooms3 + bathrooms3 + surface_total3 + 
