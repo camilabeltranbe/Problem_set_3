@@ -228,7 +228,7 @@ tune_full1 <- tune_grid(
   grid = grid_values,
   metrics = metric_set(mae)
 )
-###AQUI
+
 tune_full2 <- tune_grid(
   workflow_full2,
   resamples = block_folds,
@@ -284,6 +284,9 @@ model3_rf_predictions <- predicted2[,c("property_id",".pred")]
 colnames(model3_rf_predictions) <- c("property_id","price")
 write.csv(model3_rf_predictions, "model3_rf_predictions_ale.csv", row.names = F)
 #Kaggle = 264966609.86125
+
+
+
 
 #- 4 | Boosting: Modelo ---------------------------------------------
 ## Primero creamos diferentes subsets para aplicar a boosting ##
@@ -696,4 +699,105 @@ yardstick::mae(data = train_full_dummys,truth = price, estimate = price_pred) #p
 Predic_lin_reg_model1 <- test_full_dummys[,c("property_id","price")]
 colnames(Predic_lin_reg_model1) <- c("property_id","price")
 write.csv(Predic_lin_reg_model1,"Linear_reg_model1_ale.csv",row.names = F)
+
+
+# - 6 | Random Forest saturado --------------------------------------
+
+#Creamos las variables al cuadrado
+test_full_dummys$surface_covered3_cuadrado <- test_full_dummys$surface_covered3^2
+train_full_dummys$surface_covered3_cuadrado <- train_full_dummys$surface_covered3^2
+
+test_full_dummys$rooms3_cuadrado <- test_full_dummys$rooms3^2
+train_full_dummys$rooms3_cuadrado <- train_full_dummys$rooms3^2
+
+test_full_dummys$surface_total3_cuadrado <- test_full_dummys$surface_total3^2
+train_full_dummys$surface_total3_cuadrado <- train_full_dummys$surface_total3^2
+
+
+
+
+#precio normal con mas variables
+full_formula3<- as.formula(price ~ rooms3 + bathrooms3 + surface_total3 + 
+                             surface_covered3 + n_pisos_numerico + zona_t_g + estrato + 
+                             PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + 
+                             PC7 + PC8 + PC9 + PC10 + PC11 + PC12 + PC13 + PC14 + PC15 + 
+                             PC16 + PC17 + PC18 + PC19 + PC20 + PC21 + PC22 + PC23 + PC24 + 
+                             PC25 + PC26 + PC27 + PC28 + PC29 + PC30 + PC31 + PC32 + PC33 + 
+                             PC34 + PC35 + PC36 + PC37 + PC38 + PC39 + PC40 + PC41 + PC42 + 
+                             PC43 + PC44 + PC45 + PC46 + PC47 + PC48 + PC49 + PC50 + PC51 + 
+                             PC52 + PC53 + PC54 + PC55 + PC56 + PC57 + PC58 + PC59 + PC60 + 
+                             PC61 + PC62 + PC63 + PC64 + PC65 + PC66 + PC67 + PC68 + PC69 + 
+                             PC70 + PC71 + abiert + acab + acces + alcob + ampli + are + 
+                             ascensor + balcon + ban + bao + baos + bbq + bogot + buen + 
+                             centr + cerc + cerr + chimene + closet + cocin + comedor + 
+                             comercial + comunal + cuart + cuatr + cubiert + cuent + deposit + 
+                             dos + edifici + espaci + estudi + excelent + exterior + garaj + 
+                             gas + gimnasi + habit + habitacion + hermos + ilumin + independient + 
+                             integral + interior + lavanderi + lind + mader + mts + natural + 
+                             parqu + parqueader + pis + principal + priv + remodel + rop + 
+                             sal + salon + sector + segur + servici + social + terraz + 
+                             tres + ubicacion + uno + vias + vigil + visit + vist + zon +
+                             localidad_BARRIOS.UNIDOS + localidad_CANDELARIA + localidad_CHAPINERO +
+                             localidad_ENGATIVA + localidad_LOS.MARTIRES + localidad_SAN.CRISTOBAL + localidad_SANTA.FE + 
+                             localidad_SUBA + localidad_TEUSAQUILLO + localidad_USAQUEN + surface_covered3_cuadrado + rooms3_cuadrado +
+                             surface_total3_cuadrado + property_type_Apartamento + property_type_Casa)
+
+
+# Especificación del Modelo de Random Forest con el modo establecido
+rf_spec <- rand_forest(mtry = tune(), trees = 1000, min_n = tune()) %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+
+# Creación de la grilla de valores para los hiperparámetros
+grid_values <- grid_regular(mtry(range = c(1, 10)), min_n(range = c(2, 20)), levels = 5)
+
+# Preparación de las recetas
+rec_full3 <- recipe(full_formula3, data = train_full_dummys) %>%
+  step_novel(all_nominal_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_zv(all_predictors()) %>%
+  step_normalize(all_predictors())
+
+workflow_full3 <- workflow() %>%
+  add_recipe(rec_full3) %>%
+  add_model(rf_spec)
+
+# Conversión de datos espaciales y validación cruzada espacial
+train_sf <- st_as_sf(
+  train_full_dummys, 
+  coords = c("lon", "lat"),
+  crs = 4326
+)
+
+set.seed(86936)
+block_folds <- spatial_block_cv(train_sf, v = 5)
+autoplot(block_folds)
+
+# Ajuste del modelo con validación cruzada y selección del mejor modelo
+detach("package:Metrics", unload=TRUE)
+set.seed(86936)
+tune_full3 <- tune_grid(
+  workflow_full3,
+  resamples = block_folds,
+  grid = grid_values,
+  metrics = metric_set(mae)
+)
+
+best_tune_full3 <- select_best(tune_full3, metric = "mae")
+
+# Finalizar el flujo de trabajo con el mejor valor de parámetros
+full_final3 <- finalize_workflow(workflow_full3, best_tune_full3)
+full_final_fit3 <- fit(full_final3, data = train_full_dummys)
+
+# Predicción y evaluación del modelo 4 en el conjunto de entrenamiento
+augment(full_final_fit3, new_data = train_full_dummys) %>%
+  mae(truth = price, estimate = .pred) # mae = 47857225
+
+# Predicción en el conjunto de prueba (modelo 4)
+predicted3 <- augment(full_final_fit3, new_data = test_full_dummys)
+model4_rf_predictions <- predicted3[,c("property_id",".pred")]
+colnames(model4_rf_predictions) <- c("property_id","price")
+write.csv(model4_rf_predictions, "model4_rf_predictions_ale.csv", row.names = F)
+#Kaggle = 255325981.63193
+
 
