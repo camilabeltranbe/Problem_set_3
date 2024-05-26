@@ -653,6 +653,14 @@ XGBoost_model8 <- train(price ~ rooms3 + bathrooms3 + surface_total3 +
                         trControl = fitControl,
                         tuneGrid=grid_xbgoost)        
 
+
+# Obtener los mejores hiperparámetros
+best_hyperparameters <- XGBoost_model8$bestTune
+print(best_hyperparameters)
+
+# Resumen del modelo
+summary(XGBoost_model8)
+
 train_XGBoost_model8 <- train_full_dummys %>% 
   mutate(price_pred = predict(XGBoost_model8, newdata = train_full_dummys))  
 yardstick::mae(train_XGBoost_model8, truth = price, estimate = price_pred) #predicción en train: mae = 100712716
@@ -664,6 +672,36 @@ Predic_XGBoost_model8 <- test_full_dummys %>%
 
 write.csv(Predic_XGBoost_model8,"XGBoost_model8_ale.csv",row.names = F) 
 #Puntaje Kaggle: 248837015.95089
+
+## Graficas relevantes ##
+
+# Extraer el modelo xgboost entrenado
+xgb_model <- XGBoost_model8$finalModel
+
+# Calcular las predicciones en el conjunto de entrenamiento
+train_full_dummys <- train_full_dummys %>% 
+  mutate(price_pred = predict(XGBoost_model8, newdata = train_full_dummys))
+
+# Gráfica de Dispersión de Predicciones vs Valores Reales
+ggplot(train_full_dummys, aes(x = price, y = price_pred)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  ggtitle("Predicciones vs Valores Reales") +
+  xlab("Valores Reales") +
+  ylab("Predicciones") +
+  theme_minimal()
+
+# Obtener los resultados de la validación cruzada
+cv_results <- XGBoost_model8$resample
+
+# Graficar el rendimiento en validación cruzada (MAE para cada fold) con líneas de color azul claro
+ggplot(cv_results, aes(x = Resample, y = MAE)) +
+  geom_boxplot(color = "cadetblue3", fill = "cadetblue3", alpha = 0.5) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  ggtitle("MAE en cada fold de validación cruzada") +
+  xlab("Fold de Validación") +
+  ylab("MAE") +
+  theme_minimal()
 
 #- 5 | Modelos de regresión lineal ---------------------------------------------------
 reg_lin_model1 <- lm(price ~ rooms3 + bathrooms3 + surface_total3 + 
