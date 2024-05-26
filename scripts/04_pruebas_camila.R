@@ -277,7 +277,7 @@ model4_linear_regression <- test[,c("property_id","y_pred")]
 colnames(model4_linear_regression) <- c("property_id","price")
 write.csv(model4_linear_regression,"model4_linear_regression.csv",row.names = F)
 
-model4 <- lm(price~surface_covered3+rooms3+
+model4 <- lm(price~surface_covered3+bedrooms+
                bathrooms3+estrato+n_pisos_numerico+zona_t_g+Dist_pol+
                dist_parque+lat+lon+localidad,data=train)
 train$y_pred <- predict(model4,newdata = train)

@@ -80,7 +80,7 @@ summary(train$precio_mt2)
 
 # estadísticas descriptivas ----------------------------------------------------
 stargazer(train)
-stargazer(test,type="text")
+stargazer(tr,type="text")
 
 
 # Histograma ----------------------------------------------------
@@ -151,14 +151,14 @@ test$localidad <- sf_test$Nombre.de.la.localidad
 # gráficas de ubicación geográfica x localidad ---------------------------------
 # (train)
 ggplot()+
-  geom_sf(data=localidades, color = "darkred") + 
+  geom_sf(data=localidades, color = "darkgrey") + 
   geom_sf(data=sf_train,shape=15, size=0.3,aes(color= precio_mt2)) + 
   theme_bw()
 
 # (test)
 ggplot()+
-  geom_sf(data=localidades, color = "darkred") + 
-  geom_sf(data=sf_test,shape=15, size=0.3,color="darkblue") +
+  geom_sf(data=localidades, color = "darkgrey") + 
+  geom_sf(data=sf_test,shape=15, size=0.3,color="cadetblue4") +
   theme_bw()
 
 # gráficas de ubicación geográfica en chapinero x tipo apto o casa---------------
@@ -168,7 +168,7 @@ ggplot() +
   geom_sf(data = sf_train %>% filter(property_type == "Apartamento"), aes(color = "Apartamento"), shape = 15, size = 0.3) +
   geom_sf(data = sf_train %>% filter(property_type == "Casa"), aes(color = "Casa"), shape = 15, size = 0.3) +
   scale_color_manual(name = "Tipo de Propiedad", 
-                     values = c(Apartamento = "darkred", Casa = "darkblue")) +
+                     values = c(Apartamento = "cadetblue4", Casa = "darkorange")) +
   labs(x = "Longitud", y = "Latitud")+
     theme_bw()
 
@@ -177,7 +177,7 @@ ggplot() +
   geom_sf(data = sf_test %>% filter(property_type == "Apartamento"), aes(color = "Apartamento"), shape = 15, size = 0.3) +
   geom_sf(data = sf_test %>% filter(property_type == "Casa"), aes(color = "Casa"), shape = 15, size = 0.3) +
   scale_color_manual(name = "Tipo de Propiedad", 
-                     values = c(Apartamento = "darkred", Casa = "darkblue")) +
+                     values = c(Apartamento = "cadetblue4", Casa = "darkorange")) +
   labs(x = "Longitud", y = "Latitud")+
   theme_bw()
 
