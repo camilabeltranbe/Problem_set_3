@@ -25,6 +25,7 @@ p_load("tidyverse",
        "xgboost",
        "ROSE",#remuestreo ROSE
        "ranger") #random forest 
+library(caret)
 library(dplyr)
 wd <- ("/Users/aleja/Documents/Maestría Uniandes/Clases/Big Data y Machine Learning/Repositorios Git Hub/Problem_set_3")
 setwd(paste0(wd,"/stores"))
@@ -285,4 +286,414 @@ write.csv(model3_rf_predictions, "model3_rf_predictions_ale.csv", row.names = F)
 #Kaggle = 264966609.86125
 
 #- 4 | Boosting: Modelo ---------------------------------------------
+## Primero creamos diferentes subsets para aplicar a boosting ##
+# predictores sin stopwords y componentes principales
+train1 <- train %>% 
+  select(property_id,price,surface_total3,property_type,lat,lon,
+         rooms3,bathrooms3,estrato,n_pisos_numerico,zona_t_g,localidad,
+         Dist_pol,dist_parque)
+
+test1 <- test %>% 
+  select(property_id,surface_total3,property_type,lat,lon,
+         rooms3,bathrooms3,estrato,n_pisos_numerico,zona_t_g,localidad,
+         Dist_pol,dist_parque)
+
+#crear dummys train
+dummys <- dummy(subset(train1, select = c(property_type, localidad)))
+dummys <- as.data.frame(apply(dummys,2,function(x){as.numeric(x)}))
+train1 <- cbind(subset(train1, select = -c(property_type, localidad)),dummys)
+#crear dummys test
+dummys <- dummy(subset(test1, select = c(property_type, localidad)))
+dummys <- as.data.frame(apply(dummys,2,function(x){as.numeric(x)}))
+test1 <- cbind(subset(test1, select = -c(property_type, localidad)),dummys)
+#dejar variables que comparten test y train depsues de crear dummys
+train1 <- train1[c(colnames(test1),"price")]
+
+#componentes principales
+pc_train <- train1 %>% 
+  select(-property_id,-price)
+pc_test <- test1 %>% 
+  select(-property_id)
+pc_train <- prcomp(as.matrix(pc_train), scale=TRUE)
+pc_test <- prcomp(as.matrix(pc_test), scale=TRUE)
+
+#guardar componentes 
+pc_train <- as.data.frame(predict(pc_train)) %>%
+  mutate(property_id = train1$property_id)
+pc_test <- as.data.frame(predict(pc_test)) %>%
+  mutate(property_id = test1$property_id)
+
+#unir base de datos 
+train2 <- merge(train1,pc_train,by = "property_id")
+test2 <- merge(test1,pc_test,by = "property_id")
+#base con solo 10 componentes
+train3 <- cbind(train1$price,pc_train)[c(1:11,ncol(pc_train)+1)]
+colnames(train3)[1] <- "price"
+test3 <- pc_test[,c(1:10,ncol(pc_test))]
+
+## Creamos una data full con las dummys nuevas ##
+#crear dummys train
+dummys <- dummy(subset(train_full, select = c(property_type, localidad)))
+dummys <- as.data.frame(apply(dummys,2,function(x){as.numeric(x)}))
+train_full_dummys <- cbind(subset(train_full, select = -c(property_type, localidad)),dummys)
+#crear dummys test
+dummys <- dummy(subset(test_full, select = c(property_type, localidad)))
+dummys <- as.data.frame(apply(dummys,2,function(x){as.numeric(x)}))
+test_full_dummys <- cbind(subset(test_full, select = -c(property_type, localidad)),dummys)
+#dejar variables que comparten test y train despues de crear dummys
+train_full_dummys <- train_full_dummys[c(colnames(test_full_dummys),"price")]
+#Quitamos el segundo price de la train full dummys
+train_full_dummys$price.1=NULL
+
+
+
+#- 4.1 | Modelo Boosting 1 saturado ----------------------------------------
+fitControl <- trainControl(method ="cv",number=5)
+#Cargamos los parámetros del boosting
+grid_xbgoost <- expand.grid(nrounds = c(500),
+                            max_depth = c(4),
+                            eta = c(0.01), 
+                            gamma = c(0), 
+                            min_child_weight = c(10, 25),
+                            colsample_bytree = c(0.33,0.66), 
+                            subsample = c(0.4))
+
+
+#xgboost con variables y componentes principales
+set.seed(63928)
+XGBoost_model1 <- train(price ~ estrato + surface_covered3 + n_pisos_numerico + Dist_pol + dist_parque + rooms3 +
+                  bathrooms3 + lat + lon + localidad_BARRIOS.UNIDOS + localidad_CANDELARIA + localidad_CHAPINERO +
+                  localidad_ENGATIVA + localidad_LOS.MARTIRES + localidad_SAN.CRISTOBAL + localidad_SANTA.FE + 
+                  localidad_SUBA + localidad_TEUSAQUILLO + localidad_USAQUEN + zona_t_g + property_type_Apartamento +
+                  property_type_Casa + PC1 + PC5 + PC7 + PC8 + PC12 + PC15 + PC16 + PC17 + PC18 + PC23 + PC28 +
+                  PC32 + PC35 + PC37 + PC41 + PC42 + PC45 + PC47 + PC49 + PC50 + PC51 +
+                  PC55 + PC59 + PC60 + PC61 + PC62 + PC63 + PC68 + PC71,
+                  data=train_full_dummys[-1], #excluye variable de property_id
+                  method = "xgbTree",
+                  trControl = fitControl,
+                  tuneGrid=grid_xbgoost)        
+
+train_XGBoost_model1 <- train_full_dummys %>% 
+  mutate(price_pred = predict(XGBoost_model1, newdata = train_full_dummys))  
+yardstick::mae(train_XGBoost_model1, truth = price, estimate = price_pred) #predicción en train: mae = 149304612
+
+
+Predic_XGBoost_model1 <- test_full_dummys %>%
+  mutate(price = predict(XGBoost_model1, newdata = test_full_dummys)) %>% 
+  select(property_id,price) 
+
+write.csv(Predic_XGBoost_model1,"XGBoost_model1_ale.csv",row.names = F) 
+#Puntaje Kaggle: 
+
+#- 4.2 | Modelo Boosting 2 sin tantas variables ----------------------------------------
+fitControl <- trainControl(method ="cv",number=5)
+#Cargamos los parámetros del boosting
+grid_xbgoost <- expand.grid(nrounds = c(500),
+                            max_depth = c(4),
+                            eta = c(0.01), 
+                            gamma = c(0), 
+                            min_child_weight = c(10, 25),
+                            colsample_bytree = c(0.33,0.66), 
+                            subsample = c(0.4))
+
+
+#xgboost sin tantas variables y componentes principales
+set.seed(63928)
+XGBoost_model2 <- train(price ~ estrato + surface_covered3 + n_pisos_numerico + rooms3 +
+                          bathrooms3 + lat + lon + localidad_BARRIOS.UNIDOS + localidad_CANDELARIA + localidad_CHAPINERO +
+                          localidad_ENGATIVA + localidad_LOS.MARTIRES + localidad_SAN.CRISTOBAL + localidad_SANTA.FE + 
+                          localidad_SUBA + localidad_TEUSAQUILLO + localidad_USAQUEN + zona_t_g + property_type_Apartamento +
+                          property_type_Casa + PC7 + PC8 + PC12 + PC15 + PC18 + PC23 + PC28 +
+                          PC32 + PC35 + PC37 + PC42 + PC47 + PC49 + PC51 +
+                          PC55 + PC59 + PC63 + PC68,
+                        data=train_full_dummys[-1], #excluye variable de property_id
+                        method = "xgbTree",
+                        trControl = fitControl,
+                        tuneGrid=grid_xbgoost)        
+
+train_XGBoost_model2 <- train_full_dummys %>% 
+  mutate(price_pred = predict(XGBoost_model2, newdata = train_full_dummys))  
+yardstick::mae(train_XGBoost_model2, truth = price, estimate = price_pred) #predicción en train: mae = 150564863
+
+
+Predic_XGBoost_model2 <- test_full_dummys %>%
+  mutate(price = predict(XGBoost_model2, newdata = test_full_dummys)) %>% 
+  select(property_id,price) 
+
+write.csv(Predic_XGBoost_model2,"XGBoost_model2_ale.csv",row.names = F) 
+#Puntaje Kaggle: 
+
+#- 4.3 | Modelo Boosting 3 sin tantas variables ----------------------------------------
+fitControl <- trainControl(method ="cv",number=5)
+#Cargamos los parámetros del boosting
+grid_xbgoost <- expand.grid(nrounds = c(500),
+                            max_depth = c(4), 
+                            eta = c(0.25,0.5), 
+                            gamma = c(0), 
+                            min_child_weight = c(50),
+                            colsample_bytree = c(0.33,0.66),
+                            subsample = c(0.4))
+
+
+#xgboost sin tantas variables y componentes principales
+set.seed(63928)
+XGBoost_model3 <- train(price ~ estrato + surface_covered3 + n_pisos_numerico + rooms3 + surface_covered3^2 + rooms3^2 +
+                          bathrooms3 + lat + lon + localidad_BARRIOS.UNIDOS + localidad_CANDELARIA + localidad_CHAPINERO +
+                          localidad_ENGATIVA + localidad_LOS.MARTIRES + localidad_SAN.CRISTOBAL + localidad_SANTA.FE + 
+                          localidad_SUBA + localidad_TEUSAQUILLO + localidad_USAQUEN + zona_t_g + property_type_Apartamento +
+                          property_type_Casa + PC7 + PC8 + PC12 + PC15 + PC18 + PC23 + PC28 +
+                          PC32 + PC35 + PC37 + PC42 + PC47 + PC49 + PC51 +
+                          PC55 + PC59 + PC63 + PC68,
+                        data=train_full_dummys[-1], #excluye variable de property_id
+                        method = "xgbTree",
+                        trControl = fitControl,
+                        tuneGrid=grid_xbgoost)        
+
+train_XGBoost_model3 <- train_full_dummys %>% 
+  mutate(price_pred = predict(XGBoost_model3, newdata = train_full_dummys))  
+yardstick::mae(train_XGBoost_model3, truth = price, estimate = price_pred) #predicción en train: mae = 113750326
+
+
+Predic_XGBoost_model3 <- test_full_dummys %>%
+  mutate(price = predict(XGBoost_model3, newdata = test_full_dummys)) %>% 
+  select(property_id,price) 
+
+write.csv(Predic_XGBoost_model3,"XGBoost_model3_ale.csv",row.names = F) 
+#Puntaje Kaggle: 
+
+#- 4.4 | Modelo Boosting 4 sin tantas variables ----------------------------------------
+fitControl <- trainControl(method ="cv",number=5)
+#Cargamos los parámetros del boosting
+grid_xbgoost <- expand.grid(nrounds = c(500),
+                            max_depth = c(4), 
+                            eta = c(0.25,0.5), 
+                            gamma = c(0), 
+                            min_child_weight = c(50),
+                            colsample_bytree = c(0.33,0.66),
+                            subsample = c(0.4))
+
+
+#xgboost sin tantas variables y componentes principales
+set.seed(63928)
+XGBoost_model4 <- train(price ~ estrato + surface_covered3 + n_pisos_numerico + rooms3 + surface_covered3^2 + rooms3^2 +
+                          bathrooms3 + lat + lon + localidad_BARRIOS.UNIDOS + localidad_CANDELARIA + localidad_CHAPINERO +
+                          localidad_ENGATIVA + localidad_LOS.MARTIRES + localidad_SAN.CRISTOBAL + localidad_SANTA.FE + 
+                          localidad_SUBA + localidad_TEUSAQUILLO + localidad_USAQUEN + zona_t_g + property_type_Apartamento +
+                          property_type_Casa + PC7 + PC8 + PC12 + PC15 + PC18 + PC23 + PC28 +
+                          PC32 + PC35 + PC37 + PC42 + PC47 + PC49 + PC51 +
+                          PC55 + PC59 + PC63 + PC68 + surface_total3 + surface_total3^2 + chimene +
+                          bbq + deposit + excelent + vist,
+                        data=train_full_dummys[-1], #excluye variable de property_id
+                        method = "xgbTree",
+                        trControl = fitControl,
+                        tuneGrid=grid_xbgoost)        
+
+train_XGBoost_model4 <- train_full_dummys %>% 
+  mutate(price_pred = predict(XGBoost_model4, newdata = train_full_dummys))  
+yardstick::mae(train_XGBoost_model4, truth = price, estimate = price_pred) #predicción en train: mae = 112020789
+
+
+Predic_XGBoost_model4 <- test_full_dummys %>%
+  mutate(price = predict(XGBoost_model4, newdata = test_full_dummys)) %>% 
+  select(property_id,price) 
+
+write.csv(Predic_XGBoost_model4,"XGBoost_model4_ale.csv",row.names = F) 
+#Puntaje Kaggle: 
+
+#- 4.5 | Modelo Boosting 5 sin tantas variables ----------------------------------------
+fitControl <- trainControl(method ="cv",number=5)
+#Cargamos los parámetros del boosting
+grid_xbgoost <- expand.grid(nrounds = c(500),
+                            max_depth = c(4), 
+                            eta = c(0.25,0.5), 
+                            gamma = c(0), 
+                            min_child_weight = c(50),
+                            colsample_bytree = c(0.33,0.66),
+                            subsample = c(0.4))
+
+
+#xgboost sin tantas variables y componentes principales
+set.seed(63928)
+XGBoost_model5 <- train(price ~ estrato + surface_covered3 + n_pisos_numerico + rooms3 + surface_covered3^2 + rooms3^2 +
+                          bathrooms3 + lat + lon + localidad_BARRIOS.UNIDOS + localidad_CANDELARIA + localidad_CHAPINERO +
+                          localidad_ENGATIVA + localidad_LOS.MARTIRES + localidad_SAN.CRISTOBAL + localidad_SANTA.FE + 
+                          localidad_SUBA + localidad_TEUSAQUILLO + localidad_USAQUEN + zona_t_g + property_type_Apartamento +
+                          property_type_Casa + PC7 + PC8 + PC12 + PC15 + PC18 + PC23 + PC28 +
+                          PC32 + PC35 + PC37 + surface_total3^2 + chimene + garaj + localidad_CHAPINERO:rooms3 +
+                          bbq + deposit + excelent + vist,
+                        data=train_full_dummys[-1], #excluye variable de property_id
+                        method = "xgbTree",
+                        trControl = fitControl,
+                        tuneGrid=grid_xbgoost)        
+
+train_XGBoost_model5 <- train_full_dummys %>% 
+  mutate(price_pred = predict(XGBoost_model5, newdata = train_full_dummys))  
+yardstick::mae(train_XGBoost_model5, truth = price, estimate = price_pred) #predicción en train: mae = 115129437
+
+
+Predic_XGBoost_model5 <- test_full_dummys %>%
+  mutate(price = predict(XGBoost_model5, newdata = test_full_dummys)) %>% 
+  select(property_id,price) 
+
+write.csv(Predic_XGBoost_model5,"XGBoost_model5_ale.csv",row.names = F) 
+#Puntaje Kaggle: 
+
+
+#- 4.6 | Modelo Boosting 6 sin tantas variables ----------------------------------------
+fitControl <- trainControl(method ="cv",number=5)
+#Cargamos los parámetros del boosting
+grid_xbgoost <- expand.grid(nrounds = c(500),
+                            max_depth = c(4), 
+                            eta = c(0.25,0.5), 
+                            gamma = c(0), 
+                            min_child_weight = c(50),
+                            colsample_bytree = c(0.33,0.66),
+                            subsample = c(0.4))
+
+
+#xgboost sin tantas variables y componentes principales
+set.seed(63928)
+XGBoost_model6 <- train(price ~ estrato + surface_covered3 + n_pisos_numerico + rooms3 + surface_covered3^2 + rooms3^2 +
+                          bathrooms3 + lat + lon + zona_t_g + property_type_Apartamento +
+                          property_type_Casa + PC7 + PC8 + PC12 + PC15 + PC18 + PC23 + PC28 +
+                          PC32 + PC35 + PC37 + surface_total3^2 + chimene + garaj +
+                          bbq + deposit + excelent + vist,
+                        data=train_full_dummys[-1], #excluye variable de property_id
+                        method = "xgbTree",
+                        trControl = fitControl,
+                        tuneGrid=grid_xbgoost)        
+
+train_XGBoost_model6 <- train_full_dummys %>% 
+  mutate(price_pred = predict(XGBoost_model6, newdata = train_full_dummys))  
+yardstick::mae(train_XGBoost_model6, truth = price, estimate = price_pred) #predicción en train: mae = 115797313
+
+
+Predic_XGBoost_model6 <- test_full_dummys %>%
+  mutate(price = predict(XGBoost_model6, newdata = test_full_dummys)) %>% 
+  select(property_id,price) 
+
+write.csv(Predic_XGBoost_model6,"XGBoost_model6_ale.csv",row.names = F) 
+#Puntaje Kaggle: 
+
+#- 4.7 | Modelo Boosting 7 con las mejores variables de RF ----------------------------------------
+fitControl <- trainControl(method ="cv",number=5)
+#Cargamos los parámetros del boosting
+grid_xbgoost <- expand.grid(nrounds = c(500),
+                            max_depth = c(4), 
+                            eta = c(0.25,0.5), 
+                            gamma = c(0), 
+                            min_child_weight = c(50),
+                            colsample_bytree = c(0.33,0.66),
+                            subsample = c(0.4))
+
+
+#xgboost sin tantas variables y componentes principales
+set.seed(63928)
+XGBoost_model7 <- train(full_formula2,
+                        data=train_full[-1], #excluye variable de property_id
+                        method = "xgbTree",
+                        trControl = fitControl,
+                        tuneGrid=grid_xbgoost)        
+
+train_XGBoost_model7 <- train_full_dummys %>% 
+  mutate(price_pred = predict(XGBoost_model7, newdata = train_full))  
+yardstick::mae(train_XGBoost_model7, truth = price, estimate = price_pred) #predicción en train: mae = 100766720
+
+
+Predic_XGBoost_model7 <- test_full_dummys %>%
+  mutate(price = predict(XGBoost_model7, newdata = test_full)) %>% 
+  select(property_id,price) 
+
+write.csv(Predic_XGBoost_model7,"XGBoost_model7_ale.csv",row.names = F) 
+#Puntaje Kaggle: 
+
+#- 4.8 | Modelo Boosting 8 sin tantas variables ----------------------------------------
+fitControl <- trainControl(method ="cv",number=5)
+#Cargamos los parámetros del boosting
+grid_xbgoost <- expand.grid(nrounds = c(500),
+                            max_depth = c(4), 
+                            eta = c(0.25,0.5), 
+                            gamma = c(0), 
+                            min_child_weight = c(50),
+                            colsample_bytree = c(0.33,0.66),
+                            subsample = c(0.4))
+
+
+#xgboost sin tantas variables y componentes principales
+set.seed(63928)
+XGBoost_model8 <- train(price ~ rooms3 + bathrooms3 + surface_total3 + 
+                          surface_covered3 + n_pisos_numerico + zona_t_g + estrato + 
+                          PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + 
+                          PC7 + PC8 + PC9 + PC10 + PC11 + PC12 + PC13 + PC14 + PC15 + 
+                          PC16 + PC17 + PC18 + PC19 + PC20 + PC21 + PC22 + PC23 + PC24 + 
+                          PC25 + PC26 + PC27 + PC28 + PC29 + PC30 + PC31 + PC32 + PC33 + 
+                          PC34 + PC35 + PC36 + PC37 + PC38 + PC39 + PC40 + PC41 + PC42 + 
+                          PC43 + PC44 + PC45 + PC46 + PC47 + PC48 + PC49 + PC50 + PC51 + 
+                          PC52 + PC53 + PC54 + PC55 + PC56 + PC57 + PC58 + PC59 + PC60 + 
+                          PC61 + PC62 + PC63 + PC64 + PC65 + PC66 + PC67 + PC68 + PC69 + 
+                          PC70 + PC71 + abiert + acab + acces + alcob + ampli + are + 
+                          ascensor + balcon + ban + bao + baos + bbq + bogot + buen + 
+                          centr + cerc + cerr + chimene + closet + cocin + comedor + 
+                          comercial + comunal + cuart + cuatr + cubiert + cuent + deposit + 
+                          dos + edifici + espaci + estudi + excelent + exterior + garaj + 
+                          gas + gimnasi + habit + habitacion + hermos + ilumin + independient + 
+                          integral + interior + lavanderi + lind + mader + mts + natural + 
+                          parqu + parqueader + pis + principal + priv + remodel + rop + 
+                          sal + salon + sector + segur + servici + social + terraz + 
+                          tres + ubicacion + uno + vias + vigil + visit + vist + zon +
+                          localidad_BARRIOS.UNIDOS + localidad_CANDELARIA + localidad_CHAPINERO +
+                          localidad_ENGATIVA + localidad_LOS.MARTIRES + localidad_SAN.CRISTOBAL + localidad_SANTA.FE + 
+                          localidad_SUBA + localidad_TEUSAQUILLO + localidad_USAQUEN + surface_covered3^2 + rooms3^2 +
+                          surface_total3^2 + property_type_Apartamento + property_type_Casa,
+                        data=train_full_dummys[-1], #excluye variable de property_id
+                        method = "xgbTree",
+                        trControl = fitControl,
+                        tuneGrid=grid_xbgoost)        
+
+train_XGBoost_model8 <- train_full_dummys %>% 
+  mutate(price_pred = predict(XGBoost_model8, newdata = train_full_dummys))  
+yardstick::mae(train_XGBoost_model8, truth = price, estimate = price_pred) #predicción en train: mae = 100712716
+
+
+Predic_XGBoost_model8 <- test_full_dummys %>%
+  mutate(price = predict(XGBoost_model8, newdata = test_full_dummys)) %>% 
+  select(property_id,price) 
+
+write.csv(Predic_XGBoost_model8,"XGBoost_model8_ale.csv",row.names = F) 
+#Puntaje Kaggle: 248837015.95089
+
+#- 5 | Modelos de regresión lineal ---------------------------------------------------
+reg_lin_model1 <- lm(price ~ rooms3 + bathrooms3 + surface_total3 + 
+                       surface_covered3 + n_pisos_numerico + zona_t_g + estrato + 
+                       PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + 
+                       PC7 + PC8 + PC9 + PC10 + PC11 + PC12 + PC13 + PC14 + PC15 + 
+                       PC16 + PC17 + PC18 + PC19 + PC20 + PC21 + PC22 + PC23 + PC24 + 
+                       PC25 + PC26 + PC27 + PC28 + PC29 + PC30 + PC31 + PC32 + PC33 + 
+                       PC34 + PC35 + PC36 + PC37 + PC38 + PC39 + PC40 + PC41 + PC42 + 
+                       PC43 + PC44 + PC45 + PC46 + PC47 + PC48 + PC49 + PC50 + PC51 + 
+                       PC52 + PC53 + PC54 + PC55 + PC56 + PC57 + PC58 + PC59 + PC60 + 
+                       PC61 + PC62 + PC63 + PC64 + PC65 + PC66 + PC67 + PC68 + PC69 + 
+                       PC70 + PC71 + abiert + acab + acces + alcob + ampli + are + 
+                       ascensor + balcon + ban + bao + baos + bbq + bogot + buen + 
+                       centr + cerc + cerr + chimene + closet + cocin + comedor + 
+                       comercial + comunal + cuart + cuatr + cubiert + cuent + deposit + 
+                       dos + edifici + espaci + estudi + excelent + exterior + garaj + 
+                       gas + gimnasi + habit + habitacion + hermos + ilumin + independient + 
+                       integral + interior + lavanderi + lind + mader + mts + natural + 
+                       parqu + parqueader + pis + principal + priv + remodel + rop + 
+                       sal + salon + sector + segur + servici + social + terraz + 
+                       tres + ubicacion + uno + vias + vigil + visit + vist + zon +
+                       localidad_BARRIOS.UNIDOS + localidad_CANDELARIA + localidad_CHAPINERO +
+                       localidad_ENGATIVA + localidad_LOS.MARTIRES + localidad_SAN.CRISTOBAL + localidad_SANTA.FE + 
+                       localidad_SUBA + localidad_TEUSAQUILLO + localidad_USAQUEN + surface_covered3^2 + rooms3^2 +
+                       surface_total3^2 + property_type_Apartamento + property_type_Casa,
+                     data=train_full_dummys)
+
+train_full_dummys$price_pred <- predict(reg_lin_model1,newdata = train_full_dummys)
+test_full_dummys$price <- predict(reg_lin_model1,newdata = test_full_dummys)
+yardstick::mae(data = train_full_dummys,truth = price, estimate = price_pred) #predicción en train: mae = 174322593
+
+Predic_lin_reg_model1 <- test_full_dummys[,c("property_id","price")]
+colnames(Predic_lin_reg_model1) <- c("property_id","price")
+write.csv(Predic_lin_reg_model1,"Linear_reg_model1_ale.csv",row.names = F)
 

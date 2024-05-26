@@ -258,6 +258,7 @@ model <- keras_model_sequential() %>%
   layer_dense(units = 16, activation = 'relu') %>%
   layer_dense(units = 1)
 
+
 # Compilar el modelo con MAE como métrica
 model %>% compile(
   loss = 'mean_squared_error',
@@ -284,16 +285,91 @@ history <- model %>% fit(
 # Evaluar el modelo
 model %>% evaluate(train_NN, target_NN)
 
+# Realizar predicciones en los datos de Tests
+predictions_tests <- model %>% predict(test_NN)
+
+test$y_pred <- predictions_tests
+test$y_pred <- predict(model,newdata = test_NN)
+model4_NN_3capas <-as.data.frame(test[,c("property_id","y_pred")])
+colnames(model4_NN_3capas) <- c("property_id","price")
+
+write.csv(model4_NN_3capas,"model4_NN_3capas.csv",row.names = F)
+
+#----------------------------------------------------------------------
+# -------------------- 2 Neural Network  3 capas ------------------------
+#----------------------------------------------------------------------
+# Cargar y preparar los datos
+# Dividir los datos en entrenamiento y prueba
+# Cargar las librerías necesarias
+# Suponiendo que ya tienes train_full y test_full definidos
+# y el data frame seleccionado con las columnas necesarias se llama selected_df
+
+# Crear la receta de preprocesamiento
+recipe_nnet <- recipe(price ~ year+ surface_covered3 + rooms3 + bathrooms3 + estrato + n_pisos_numerico + zona_t_g + lat + lon, data = train_full) %>%
+  step_novel(all_nominal_predictors()) %>%   # Para las clases no antes vistas en el train
+  step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%  # Crear dummies para las variables categóricas
+  step_zv(all_predictors()) %>%    # Elimina predictores con varianza cero (constantes)
+  step_normalize(all_predictors())  # Normaliza los predictores
+
+# Preparar la receta con los datos de entrenamiento
+recipe_prep <- prep(recipe_nnet, training = train_full)
+
+# Aplicar la receta a los datos de entrenamiento y prueba
+train_prepped <- bake(recipe_prep, new_data = train_full)
+test_prepped <- bake(recipe_prep, new_data = test_full)
+
+# Convertir a matrices numéricas
+train_NN <- as.matrix(select(train_prepped, -price))
+target_NN <- as.matrix(train_prepped$price)
+
+test_NN <- as.matrix(select(test_prepped, -price))
+test_target_NN <- as.matrix(test_prepped$price)
+
+# Revisar las formas de los datos
+print(dim(train_NN))
+print(dim(target_NN))
+
+# Definir el modelo
+model <- keras_model_sequential() %>%
+  layer_dense(units = 256, activation = 'relu', input_shape = ncol(train_NN)) %>%
+  layer_dense(units = 64, activation = 'relu') %>%
+  layer_dense(units = 32, activation = 'relu') %>%
+  layer_dense(units = 16, activation = 'relu') %>%
+  layer_dense(units = 1)
 
 
-# Realizar las predicciones en el conjunto de prueba
-predictions <- model %>% predict(test_NN)
-
-# Convertir las predicciones a un vector
-predicted_values <- as.vector(predictions)
-
-# Crear el data frame con las predicciones y la variable property.id
-result_df <- data.frame(
-  property.id = test_full$property.id,
-  predicted_price = predicted_values
+# Compilar el modelo con MAE como métrica
+model %>% compile(
+  loss = 'mean_squared_error',
+  optimizer = optimizer_adam(),
+  metrics = c('mean_absolute_error')
 )
+
+# Resumen del modelo
+summary(model)
+
+# Entrenar el modelo con Early Stopping y reducción de la tasa de aprendizaje
+history <- model %>% fit(
+  train_NN, target_NN,
+  epochs = 100,
+  batch_size = 32,
+  validation_split = 0.2,
+  verbose = 1,
+  callbacks = list(
+    callback_early_stopping(monitor = "val_mean_absolute_error", patience = 10),
+    callback_reduce_lr_on_plateau(monitor = "val_mean_absolute_error", factor = 0.1, patience = 5)
+  )
+)
+
+# Evaluar el modelo
+model %>% evaluate(train_NN, target_NN)
+model %>% evaluate(test_NN, test_target_NN)
+
+# Realizar predicciones en los datos de Tests
+predictions_tests <- model %>% predict(test_NN)
+
+test$y_pred <- predictions_tests
+model5_NN_4capas <-as.data.frame(test[,c("property_id","y_pred")])
+colnames(model5_NN_4capas) <- c("property_id","price")
+
+write.csv(model5_NN_4capas,"model5_NN_4capas.csv",row.names = F)
