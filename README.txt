@@ -1,12 +1,12 @@
-# Problem Set 2: Big Data y Machine Learning para Economía Aplicada
-***14 de Abril de 2024***  
+# Problem Set 3: Big Data y Machine Learning para Economía Aplicada
+***26 de mayo de 2024***  
 ***Universidad de los Andes***  
 ***Camila Beltran (cod. 202213110)***  
 ***Julian Pulido (cod. 201814833)***  
 ***Alejandra Guevara (cod. 202324570)***  
-***Juan Pablo Rodríguez (cod. 201716771)***  
+***Juan Pablo Rodríguez (cod. 201715671)***  
 
-Este repositorio almacena toda la información utilizada para la solución del problem set 2 de la materia de Big Data y Machine Learning para Economía Aplicada. La información se encuentra separada en cuatro carpetas:
+Este repositorio almacena toda la información utilizada para la solución del problem set 3 de la materia de Big Data y Machine Learning para Economía Aplicada. La información se encuentra separada en cuatro carpetas:
 
 * `document`: En esta carpeta está el documento final en  _.pdf_, dado que el trabajo se realizó en grupo, decidimos utilizar el compilador de texto en línea _overleaf_. Por lo tanto, este repositorio no permite la reproducibilidad del documento final. 
 
