@@ -660,5 +660,40 @@ Predic_XGBoost_model8 <- test_full_dummys %>%
   select(property_id,price) 
 
 write.csv(Predic_XGBoost_model8,"XGBoost_model8_ale.csv",row.names = F) 
-#Puntaje Kaggle: 
+#Puntaje Kaggle: 248837015.95089
+
+#- 5 | Modelos de regresión lineal ---------------------------------------------------
+reg_lin_model1 <- lm(price ~ rooms3 + bathrooms3 + surface_total3 + 
+                       surface_covered3 + n_pisos_numerico + zona_t_g + estrato + 
+                       PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + 
+                       PC7 + PC8 + PC9 + PC10 + PC11 + PC12 + PC13 + PC14 + PC15 + 
+                       PC16 + PC17 + PC18 + PC19 + PC20 + PC21 + PC22 + PC23 + PC24 + 
+                       PC25 + PC26 + PC27 + PC28 + PC29 + PC30 + PC31 + PC32 + PC33 + 
+                       PC34 + PC35 + PC36 + PC37 + PC38 + PC39 + PC40 + PC41 + PC42 + 
+                       PC43 + PC44 + PC45 + PC46 + PC47 + PC48 + PC49 + PC50 + PC51 + 
+                       PC52 + PC53 + PC54 + PC55 + PC56 + PC57 + PC58 + PC59 + PC60 + 
+                       PC61 + PC62 + PC63 + PC64 + PC65 + PC66 + PC67 + PC68 + PC69 + 
+                       PC70 + PC71 + abiert + acab + acces + alcob + ampli + are + 
+                       ascensor + balcon + ban + bao + baos + bbq + bogot + buen + 
+                       centr + cerc + cerr + chimene + closet + cocin + comedor + 
+                       comercial + comunal + cuart + cuatr + cubiert + cuent + deposit + 
+                       dos + edifici + espaci + estudi + excelent + exterior + garaj + 
+                       gas + gimnasi + habit + habitacion + hermos + ilumin + independient + 
+                       integral + interior + lavanderi + lind + mader + mts + natural + 
+                       parqu + parqueader + pis + principal + priv + remodel + rop + 
+                       sal + salon + sector + segur + servici + social + terraz + 
+                       tres + ubicacion + uno + vias + vigil + visit + vist + zon +
+                       localidad_BARRIOS.UNIDOS + localidad_CANDELARIA + localidad_CHAPINERO +
+                       localidad_ENGATIVA + localidad_LOS.MARTIRES + localidad_SAN.CRISTOBAL + localidad_SANTA.FE + 
+                       localidad_SUBA + localidad_TEUSAQUILLO + localidad_USAQUEN + surface_covered3^2 + rooms3^2 +
+                       surface_total3^2 + property_type_Apartamento + property_type_Casa,
+                     data=train_full_dummys)
+
+train_full_dummys$price_pred <- predict(reg_lin_model1,newdata = train_full_dummys)
+test_full_dummys$price <- predict(reg_lin_model1,newdata = test_full_dummys)
+yardstick::mae(data = train_full_dummys,truth = price, estimate = price_pred) #predicción en train: mae = 174322593
+
+Predic_lin_reg_model1 <- test_full_dummys[,c("property_id","price")]
+colnames(Predic_lin_reg_model1) <- c("property_id","price")
+write.csv(Predic_lin_reg_model1,"Linear_reg_model1_ale.csv",row.names = F)
 
