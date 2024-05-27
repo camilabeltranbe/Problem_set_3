@@ -1,25 +1,5 @@
 #####Datos - problem set 3######
-rm(list = ls())
-#install.packages("pacman")
-require(pacman)
-# Cargar las librerías listadas e instalarlas en caso de ser necesario
-p_load(tidyverse, # Manipular dataframes
-       rio, # Import data easily
-       plotly, # Gráficos interactivos
-       leaflet, # Mapas interactivos
-       tmaptools, # geocode_OSM()
-       sf, # Leer/escribir/manipular datos espaciales
-       osmdata, # Get OSM's data 
-       tidymodels,#para modelos de ML
-       visdat,#gráfica para missings
-       ggplot2,
-       stargazer,
-       modeest)  
 
-#wd <- "C:/Users/camib/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3"
-#wd <-("C:/Users/User/OneDrive - Universidad de los andes/Big Data y Machine Learning/Problem_set_3")
-wd <- ("/Users/camilabeltran/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3")
-wd <- ("C:/Users/Juan/Documents/Problem_set_3")
 #se define la ruta
 setwd(paste0(wd,"/stores"))
 

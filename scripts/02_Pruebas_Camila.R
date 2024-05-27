@@ -1,20 +1,4 @@
 options(scipen=999)
-require(pacman)
-p_load(rio, ## read datasets
-       tidyverse, # Manipular dataframes
-       tm,   # para Text Mining
-       tidytext, #Para tokenización
-       stopwords,  # consultar stopwords
-       tidymodels,
-       sf,
-       spatialsample,
-       xgboost, #xgboosting
-       adabag, #adaboosting  
-       dummy #para crear dummys
-       )
-
-wd <- ("/Users/camilabeltran/OneDrive/Educación/PEG - UniAndes/BDML/Problem_set_3")
-wd <- ("C:/Users/Juan/Documents/Problem_set_3")
 
 setwd(paste0(wd,"/stores"))
 load("data_final.RData")

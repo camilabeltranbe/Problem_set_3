@@ -1,35 +1,5 @@
 ########### Modelos de prueba de con Random Forest ###############
 
-#- 1 | Carga de librerias y base de datos ----------------------------------------------------
-require("pacman")
-p_load("tidyverse",
-       "glmnet",
-       "rio", # read datasets
-       "tm", # para Text Mining
-       "tidytext",#Para tokenización
-       "caret",
-       "smotefamily",
-       "dplyr",
-       "stopwords", # consultar stopwords
-       "tidymodels",
-       "sf",
-       "spatialsample",
-       "blockCV",
-       "terra",
-       "dummy",
-       "rpart", # Recursive Partition and Regression Trees (To run Trees)
-       "rpart.plot", ## for trees graphs
-       "Metrics", # Evaluation Metrics for ML
-       "MLeval",#*MLeval: Machine Learning Model Evaluation
-       "ipred", # For Bagging 
-       "pROC",
-       "DiagrammeR",
-       "xgboost",
-       "ROSE",#remuestreo ROSE
-       "ranger") #random forest 
-library(caret)
-library(dplyr)
-wd <- ("/Users/aleja/Documents/Maestría Uniandes/Clases/Big Data y Machine Learning/Repositorios Git Hub/Problem_set_3")
 setwd(paste0(wd,"/stores"))
 load("data_final.RData")
 

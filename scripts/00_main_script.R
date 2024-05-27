@@ -6,46 +6,58 @@
 rm(list = ls())
 #se cargan los paquetes
 library(pacman)
-p_load(rio, # importación/exportación de datos
-       tidyverse, # datos ordenados (ggplot y Tidyverse)
-       skimr, # datos de resumen
-       visdat, # visualización de datos faltantes
-       corrplot, # gráficos de correlación
-       stargazer, # tablas/salida a TEX.
-       rvest, # web-scraping
-       readxl, # importar Excel
-       writexl, # exportar Excel
-       boot, # bootstrapping
-       ggpubr, # extensiones de ggplot2
-       WVPlots, # gráficos de variables ponderadas
-       patchwork, # para combinar gráficos
-       gridExtra, # para combinar gráficos
-       ggplot2, # gráficos
-       caret, # para evaluación de modelos predictivos
-       data.table,# para manipulación de datos
-       glmnet,
-       caret,
-       smotefamily, #remuestreo SMOTE
-       dplyr,
-       dummy, #crear dummys
-       Metrics, #evaluation metrics for ML
-       MLeval, #Machine Learning Model Evaluation
-       pROC,
-       ROSE, #remuestreo ROSE
-       ranger,#random forest
-       xgboost,
-       tm,   # para Text Mining
-       tidytext, #Para tokenización
-       stopwords,  # consultar stopwords
-       tidymodels,
-       sf,
-       spatialsample,
-       xgboost, #xgboosting
-       adabag,
-       nnet, # redes neuronales de una sola capa
-       keras,
-       tensorflow,
-       recipes) #xgboosting
+p_load(
+  rio, # importación/exportación de datos
+  tidyverse, # datos ordenados (ggplot y Tidyverse)
+  skimr, # datos de resumen
+  visdat, # visualización de datos faltantes
+  corrplot, # gráficos de correlación
+  stargazer, # tablas/salida a TEX.
+  rvest, # web-scraping
+  readxl, # importar Excel
+  writexl, # exportar Excel
+  boot, # bootstrapping
+  ggpubr, # extensiones de ggplot2
+  WVPlots, # gráficos de variables ponderadas
+  patchwork, # para combinar gráficos
+  gridExtra, # para combinar gráficos
+  ggplot2, # gráficos
+  caret, # para evaluación de modelos predictivos
+  data.table, # para manipulación de datos
+  glmnet, # glmnet
+  smotefamily, # remuestreo SMOTE
+  dplyr, # dplyr
+  dummy, # crear dummys
+  Metrics, # evaluation metrics for ML
+  MLeval, # Machine Learning Model Evaluation
+  pROC, # pROC
+  ROSE, # remuestreo ROSE
+  ranger, # random forest
+  xgboost, # xgboosting
+  tm, # para Text Mining
+  tidytext, # Para tokenización
+  stopwords, # consultar stopwords
+  tidymodels, # para modelos de ML
+  sf, # Leer/escribir/manipular datos espaciales
+  spatialsample, # validación cruzada espacial
+  adabag, # adaboosting
+  nnet, # redes neuronales de una sola capa
+  keras, # keras
+  tensorflow, # tensorflow
+  recipes, # recipes
+  plotly, # Gráficos interactivos
+  leaflet, # Mapas interactivos
+  tmaptools, # geocode_OSM()
+  osmdata, # Get OSM's data 
+  modeest, # Mode estimation
+  blockCV, # Spatial cross-validation
+  terra, # Spatial data handling
+  rpart, # Recursive Partition and Regression Trees (To run Trees)
+  rpart.plot, # for trees graphs
+  ipred, # For Bagging 
+  DiagrammeR, # DiagrammeR
+  ISLR2 # ISLR2
+  )
 
 #se define la ruta de trabajo
 ifelse(grepl("camilabeltran", getwd()),

@@ -1,25 +1,6 @@
 #05_Pruebas_Julian
 #Neural Networks
-rm(list = ls())
-library(pacman)  # Importemos Tydiverse que será necesario para lo que viene: 
 
-# Cargar las librerías listadas e instalarlas en caso de ser necesario
-p_load( ISLR2,
-        glmnet,
-        rio, ## read datasets
-        tidyverse, # Manipular dataframes
-        tm,   # para Text Mining
-        tidytext, #Para tokenización
-        stopwords,  # consultar stopwords
-        tidymodels,
-        sf,
-        spatialsample,
-        xgboost, #xgboosting
-        adabag, #adaboosting  
-        dummy #para crear dummys
-) 
-
-wd <- ("C:/Users/Juan/Documents/Problem_set_3")
 setwd(paste0(wd,"/stores"))
 load("data_final.RData")
 
