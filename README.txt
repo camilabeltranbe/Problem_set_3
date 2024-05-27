@@ -15,26 +15,22 @@ Este repositorio almacena toda la información utilizada para la solución del p
   * `00_main_script`: Contiene el código principal, se determina el directorio de trabajo, se cargan los paquetes necesarios y llama a los otros scripts. Para su reproducibilidad es importante determinar la ruta de trabajo. Entre la línea 51 y 61 se puede cambiar la ruta para replicar los modelos.
   * `01_data`:  Este código realiza incorpora las dos bases de datos (train y test) de los precios y características de los precios de las viviendas en Bogotá. También se encuentra la limpieza de la base de datos, y se realiza la imputación de datos de los _missing values_. Más adelante se realizan las estadísticas descriptivas, con un enfasis en la ubicación geográfica de las propiedades y la distribución del precio. Además, guarda los resultados en formato _.RData_ en la carpeta de `stores`.
   * `02_Pruebas_Camila`:  Se realizan modificaciones a la base de datos para extraer la raíz de las palabras claves que se encuentran en la descripción de cada vivienda y se realiza modelos lineales con regulación de Elastic net.
+  * `03_Pruebas_Julian`: Este código estima el precio de las viviendas por el método de redes neuronales artificiales (RNA).
+  * `04_Pruebas_Alejandra`: Este código realiza prediciones de precios de las vivienda utilizando el método de Random Forest y XG-Boost.
+  * `05_Pruebas_Juan`: De igual manera, este código realiza la predición de los precios usando un modelo líneal con un número reducido de palabras clave de la descripción de las viviendas y RNA.
 
-
-  * `03_Pruebas_Julia`: Este código realiza las estimaciones de la sección 3 del problem set 2 (Modelos de clasificación). Se exploran prediccion lineales, elastic Net y boosting. Asimismo, se explora una regresión con xgboost para clasificación indirecta.
-  * `04_Pruebas_Alejandra`: Este código realiza prediciones tanto de la sección 3 (modelo de clasificación utilizando logit son SMOTE y predicción de la sección 4 del problem set 2 (Clasificación indirecta) por medio de Random Forest.
-  * `05_Pruebas_Juan`: Este código realiza las Prediciones de la sección 3 (modelo de clasificación directa) se realizan predicciones por medio de random Forest y boosting. Adicionalmente, se explora Prediccióndes para clasificación indirecta por medio de boosting.
-
-
-
-* `Data`: En esta carpeta se encuentran las bases de datos que se encuentran en Kaggle y los resultados de cada de predicción de cada script en formato (.csv)
+* `stores`: En esta carpeta se encuentran las bases de datos que se encuentran en Kaggle y los resultados de cada de predicción de cada script en formato (.csv)
   
 * `views`: En esta carpeta están las tablas y figuras del documento final.
 
-  * `views/tables`
-	-Tabla 1- Descripción de Variables.
-	-Tabla 2- Modelos de Calsificación
-	-Tabla 3 - Comparación entre modelos de clasificación indirecta
-	-Tabla 4- Comparación de los coeficientes de un modelo lineal y uno equivalente con un método de regulación
+  * `views/Tables`
+	-Tabla 1 - Estad ́ısticas descriptivas de las principales variables en la base de datos de entrenamiento.
+	-Tabla 2 - Resumen de los modelos de Predicción.
 
-  * `views/figures'
-	-Figura 1 Histograma del ingreso de los hogares clasificados por pobreza.
-	-Figura 2 Árbol 1. Clasificación con XGBoosting
-        -Figura 3 Árbol 499. Clasificación con XGBoosting
+
+  * `views/Figures'
+	-Figura 1 - Ubicación geográfica de las propiedades en Bogotá.
+	-Figura 2 - Missing values en la base de entrenamiento por categoría de variable.
+        -Figura 3 - Histograma del precio del inmueble en millones de pesos por tipo de vivienda.
+	-Figura 4 - Validación cruzada espacial XGBoost.
     
