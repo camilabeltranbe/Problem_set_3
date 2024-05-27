@@ -179,7 +179,7 @@ nnet_tune <-
 
 grid_values <- crossing( #`crossing` nos permite generar una grilla rectangular con la combinación de todos los hiperparámetros. 
   hidden_units = seq(from= 5, to=60, by = 5),
-  epochs =  seq(from= 300, to=10000, by = 100)
+  epochs =  seq(from= 300, to=1000, by = 100)
 )
 
 #Especificamos un nuevo flujo de trabajo
@@ -296,7 +296,7 @@ colnames(model4_NN_3capas) <- c("property_id","price")
 write.csv(model4_NN_3capas,"model4_NN_3capas.csv",row.names = F)
 
 #----------------------------------------------------------------------
-# -------------------- 2 Neural Network  3 capas ------------------------
+# -------------------- 2 Neural Network  4 capas ------------------------
 #----------------------------------------------------------------------
 # Cargar y preparar los datos
 # Dividir los datos en entrenamiento y prueba
@@ -373,3 +373,93 @@ model5_NN_4capas <-as.data.frame(test[,c("property_id","y_pred")])
 colnames(model5_NN_4capas) <- c("property_id","price")
 
 write.csv(model5_NN_4capas,"model5_NN_4capas.csv",row.names = F)
+
+
+ite.csv(model4_NN_3capas,"model4_NN_3capas.csv",row.names = F)
+
+#----------------------------------------------------------------------
+# --------------------  Neural Network  Cross validation ------------------------
+#----------------------------------------------------------------------
+train_NN <- train_full %>% select(year,surface_total3, rooms3, bathrooms3, estrato, n_pisos_numerico, zona_t_g, Dist_pol, dist_parque, lat, lon, localidad, price)
+
+# Convertir la variable 'localidad' en factores
+train_NN$localidad <- as.factor(train_NN$localidad)
+train_NN$year <- as.factor(train_NN$year)
+
+
+# Paso 2: Definir la receta de preprocesamiento
+recipe_nnet <- recipe(price ~ ., data = train_NN) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_normalize(all_predictors()) 
+
+# Paso 3: Convertir los datos a formato espacial
+train_sf <- st_as_sf(train_NN, coords = c("lon", "lat"), crs = 4326, remove= FALSE)
+
+# Paso 4: Definir los folds espaciales
+set.seed(86936)
+block_folds <- spatial_block_cv(train_sf, v = 5)
+
+# Paso 5: Definir la especificación del modelo con tuning
+nnet_tune <- 
+  mlp(hidden_units = tune(), epochs = tune()) %>% 
+  set_mode("regression") %>% 
+  set_engine("keras")
+
+# Definir la grilla de hiperparámetros para ajustar
+grid_values <- crossing(
+  hidden_units = seq(from = 10, to = 100, by = 10),
+  epochs = seq(from = 100, to = 500, by = 100)
+)
+
+#Definamos la grilla de parámetros que vamos a usar en el ejercicio de validación cruzada espacial:
+
+grid_values <- crossing( #`crossing` nos permite generar una grilla rectangular con la combinación de todos los hiperparámetros. 
+  hidden_units = seq(from= 5, to=60, by = 5),
+  epochs =  seq(from= 300, to=500, by = 100)
+)
+
+# Paso 6: Preparar el flujo de trabajo
+workflow_tune <- workflow() %>% 
+  add_recipe(recipe_nnet) %>%
+  add_model(nnet_tune)
+
+# Realizar la validación cruzada espacial
+tune_nnet <- tune_grid(
+  workflow_tune, 
+  resamples = block_folds, 
+  grid = grid_values, 
+  metrics = metric_set(mae)
+)
+
+# Obtener los mejores hiperparámetros
+best_params <- select_best(tune_nnet, "mae")
+
+# Paso 7: Entrenar el modelo final con los mejores hiperparámetros
+final_nnet <- mlp(
+  hidden_units = best_params$hidden_units,
+  epochs = best_params$epochs
+) %>% 
+  set_mode("regression") %>% 
+  set_engine("keras")
+
+workflow_final <- workflow() %>% 
+  add_recipe(recipe_nnet) %>%
+  add_model(final_nnet)
+
+final_fit <- fit(workflow_final, data = train_full)
+
+# Paso 8: Realizar predicciones con el conjunto de datos de prueba
+Tests <- Tests %>% 
+  select(surface_total3, surface_covered3, rooms3, bathrooms3, estrato, n_pisos_numerico, zona_t_g, Dist_pol, dist_parque, lat, lon, localidad, property.id)
+
+Tests$localidad <- as.factor(Tests$localidad)
+
+predictions <- predict(final_fit, new_data = Tests) %>%
+  bind_cols(Tests %>% select(property.id))
+
+# Paso 9: Crear un nuevo data frame con las predicciones
+results <- predictions %>% 
+  select(property.id, .pred) %>% 
+  rename(predicted_price = .pred)
+
+print(results)
