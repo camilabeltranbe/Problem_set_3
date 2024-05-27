@@ -850,4 +850,6 @@ colnames(model4_rf_predictions) <- c("property_id","price")
 write.csv(model4_rf_predictions, "model4_rf_predictions_ale.csv", row.names = F)
 #Kaggle = 255325981.63193
 
-
+# Seleccionar los mejores hiperparámetros
+best_hyperparameters_rf <- select_best(tune_full3, metric = "mae")
+print(best_hyperparameters_rf)
